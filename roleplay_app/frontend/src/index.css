@@ -1,0 +1,81 @@
+:root {
+  --bg: #f3e9d2;
+  --bg-panel: #fbf6ea;
+  --bg-panel-2: #ecdfc2;
+  --text: #3b2e22;
+  --text-dim: #8a7860;
+  --accent: #a8763e;
+  --accent-soft: rgba(168, 118, 62, 0.15);
+  --accent-contrast: #2a1c0e;
+  --user: #8c5a7c;
+  --user-soft: rgba(140, 90, 124, 0.16);
+  --border: rgba(122, 90, 50, 0.28);
+  --shadow: 0 14px 30px rgba(90, 65, 40, 0.18);
+
+  --monologue: #5b6b78;
+
+  --banner-text: #fbf6ea;
+  --banner-text-dim: rgba(251, 246, 234, 0.75);
+  --banner-overlay: rgba(42, 28, 14, 0.92);
+  --banner-overlay-fade: rgba(42, 28, 14, 0.1);
+
+  --sans: "Segoe UI", system-ui, Roboto, sans-serif;
+  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+
+  font: 16px/1.5 var(--sans);
+  color-scheme: light;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, rgba(255, 255, 255, 0.6), transparent 60%), var(--bg);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}

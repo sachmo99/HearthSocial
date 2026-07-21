@@ -1,0 +1,11 @@
+# Ignore everything outside roleplay_app/
+/*
+!/roleplay_app
+!/.gitignore
+
+# Build/runtime artifacts inside roleplay_app that shouldn't be committed
+roleplay_app/frontend/node_modules/
+roleplay_app/frontend/dist/
+roleplay_app/backend/__pycache__/
+roleplay_app/backend/**/__pycache__/
+roleplay_app/backend/data/
