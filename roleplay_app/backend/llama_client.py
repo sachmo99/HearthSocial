@@ -18,19 +18,21 @@ async def tokenize(text: str) -> int:
         return len(r.json()["tokens"])
 
 
-def chat_completion(messages: list[dict], sampling_params: dict, stream: bool = False):
+def chat_completion(messages: list[dict], sampling_params: dict, stream: bool = False, timeout: float = 120.0):
     """Non-streaming: awaitable resolving to {"content": str, "reasoning": str}.
     Streaming (stream=True): async generator yielding {"type": "content"|"reasoning", "text": str} chunks.
     `reasoning` comes from llama-server's `reasoning_content` field (see --reasoning-format), populated
-    automatically for models whose chat template supports thinking; empty otherwise."""
+    automatically for models whose chat template supports thinking; empty otherwise.
+    `timeout` only applies to non-streaming calls - callers with no UX deadline (e.g. background
+    summarization) should pass a longer value, since the single llama-server slot may be busy."""
     payload = {"messages": messages, "stream": stream, **sampling_params}
     if stream:
         return _stream_chat_completion(payload)
-    return _chat_completion_once(payload)
+    return _chat_completion_once(payload, timeout)
 
 
-async def _chat_completion_once(payload: dict) -> dict:
-    async with httpx.AsyncClient(timeout=120.0) as client:
+async def _chat_completion_once(payload: dict, timeout: float) -> dict:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         r = await client.post(f"{config.LLAMA_SERVER_URL}/v1/chat/completions", json=payload)
         r.raise_for_status()
         message = r.json()["choices"][0]["message"]

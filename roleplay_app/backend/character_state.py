@@ -1,7 +1,7 @@
 import config
 
 RESPONSE_STYLE_DIRECTIVE = (
-    "[System: Limit replies to 6 sentences max. Internal monologue cannot be more than 2 sentences. "
+    "[System: Limit replies to 6 sentences max. Internal monologue cannot be more than 2 sentences. Narration should not be more than 2 sentences. Avoid repeating the same words or phrases. Avoid repeating the same ideas. "
     "Formatting rules: use *asterisks* only for physical actions/narration, plain text with no wrapping for spoken/dialogue "
     "dialogue, and (parentheses) for internal monologue. Never put spoken dialogue inside asterisks, even mid-action - "
     "close the asterisks before the character speaks and reopen a new pair after if the action continues. "
@@ -38,6 +38,8 @@ _STAGE_DIRECTIVES = {
     "family": "You are family; deep intimacy and trust are appropriate.",
 }
 
+VALID_STAGES = tuple(_STAGE_DIRECTIVES.keys())
+
 _AGITATED_WORDS = {"angry", "annoyed", "agitated", "furious", "irritated", "anxious"}
 _WITHDRAWN_WORDS = {"sad", "withdrawn", "melancholic", "depressed", "numb", "tired"}
 
@@ -46,7 +48,7 @@ def build_behavior_directive(summary: dict) -> str:
     parts = [
         _affection_directive(summary.get("character_affection", 0)),
         _closeness_directive(summary.get("character_closeness", 0)),
-        _STAGE_DIRECTIVES.get(summary.get("relationship_stage", "stranger"), _STAGE_DIRECTIVES["stranger"]),
+        _STAGE_DIRECTIVES.get(summary.get("relationship_stage", "acquaintance"), _STAGE_DIRECTIVES["acquaintance"]),
     ]
     mood = summary.get("character_mood")
     if mood:

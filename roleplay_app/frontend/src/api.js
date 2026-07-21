@@ -23,16 +23,12 @@ export const clearChat = (id) => json("POST", `/api/characters/${id}/clear`);
 export const listSessions = (characterId) => json("GET", `/api/characters/${characterId}/sessions`);
 export const getMessages = (sessionId) => json("GET", `/api/sessions/${sessionId}/messages`);
 export const getSessionState = (sessionId) => json("GET", `/api/sessions/${sessionId}/state`);
+export const getSessionDebug = (sessionId) => json("GET", `/api/sessions/${sessionId}/debug`);
 
-export async function* streamChat(sessionId, message, overrides) {
-  const res = await fetch(`${API_BASE}/api/chat/${sessionId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, ...(overrides || {}) }),
-  });
+async function* consumeSSEStream(res) {
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
-    throw new Error(detail.detail || `chat failed (${res.status})`);
+    throw new Error(detail.detail || `request failed (${res.status})`);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -52,4 +48,24 @@ export async function* streamChat(sessionId, message, overrides) {
       if (parsed.delta) yield parsed;
     }
   }
+}
+
+export async function* streamChat(sessionId, message, overrides, signal) {
+  const res = await fetch(`${API_BASE}/api/chat/${sessionId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, ...(overrides || {}) }),
+    signal,
+  });
+  yield* consumeSSEStream(res);
+}
+
+export async function* regenerateResponse(sessionId, overrides, signal) {
+  const res = await fetch(`${API_BASE}/api/chat/${sessionId}/regenerate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(overrides || {}),
+    signal,
+  });
+  yield* consumeSSEStream(res);
 }

@@ -57,6 +57,13 @@ class ChatIn(BaseModel):
     min_p: float | None = None
 
 
+class RegenerateIn(BaseModel):
+    temperature: float | None = None
+    top_p: float | None = None
+    top_k: int | None = None
+    min_p: float | None = None
+
+
 def _card_to_initial_state(card: CharacterIn) -> dict:
     return {
         "location": card.default_location,
@@ -130,6 +137,39 @@ async def _generate_turn(conn, session: dict, character: dict, summary: dict) ->
     messages = await context_builder.build(conn, session, character, summary)
     sampling_params = character_state.compute_sampling_params(character["sampling_preset"], summary)
     return await llama_client.chat_completion(messages, sampling_params, stream=False)
+
+
+def _apply_overrides(sampling_params: dict, overrides) -> dict:
+    if overrides.temperature is not None:
+        sampling_params["temperature"] = overrides.temperature
+    if overrides.top_p is not None:
+        sampling_params["top_p"] = overrides.top_p
+    if overrides.top_k is not None:
+        sampling_params["top_k"] = overrides.top_k
+    if overrides.min_p is not None:
+        sampling_params["min_p"] = overrides.min_p
+    return sampling_params
+
+
+def _stream_assistant_reply(conn, session_id: str, messages: list[dict], sampling_params: dict) -> StreamingResponse:
+    async def event_stream():
+        content_parts = []
+        async for chunk in llama_client.chat_completion(messages, sampling_params, stream=True):
+            if chunk["type"] == "content":
+                content_parts.append(chunk["text"])
+            yield f"data: {json.dumps({'type': chunk['type'], 'delta': chunk['text']})}\n\n"
+
+        reply = "".join(content_parts)
+        reply_tokens = await llama_client.tokenize(reply)
+        reply_id, reply_seq = _insert_message(conn, session_id, "assistant", reply, visible=1, token_count=reply_tokens)
+        rag.embed_and_store(conn, reply_id, session_id, reply)
+
+        if summarizer.should_trigger(conn, session_id, reply_seq):
+            asyncio.create_task(summarizer.run(session_id))
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @app.get("/api/characters")
@@ -263,6 +303,28 @@ def clear_chat(character_id: str):
     return {"ok": True}
 
 
+@app.get("/api/sessions/{session_id}/debug")
+def get_session_debug(session_id: str):
+    conn = db.get_db()
+    session_row = conn.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    if session_row is None:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    summary = _get_summary(conn, session_id)
+
+    all_rows = conn.execute(
+        "SELECT seq, content FROM messages WHERE session_id = ? ORDER BY seq DESC", (session_id,)
+    ).fetchall()
+    if not all_rows:
+        return {"summary": summary, "rag_hits": []}
+
+    query_text = all_rows[0]["content"]
+    recent_seqs = {r["seq"] for r in all_rows[: config.RECENT_MESSAGE_CAP]}
+    rag_hits = rag.retrieve_top_k(conn, session_id, query_text, exclude_seqs=recent_seqs)
+
+    return {"summary": summary, "rag_hits": rag_hits}
+
+
 @app.get("/api/sessions/{session_id}/state")
 def get_session_state(session_id: str):
     conn = db.get_db()
@@ -322,31 +384,37 @@ async def chat(session_id: str, body: ChatIn):
 
     summary = _get_summary(conn, session_id)
     messages = await context_builder.build(conn, session, character, summary)
-    sampling_params = character_state.compute_sampling_params(character["sampling_preset"], summary)
-    if body.temperature is not None:
-        sampling_params["temperature"] = body.temperature
-    if body.top_p is not None:
-        sampling_params["top_p"] = body.top_p
-    if body.top_k is not None:
-        sampling_params["top_k"] = body.top_k
-    if body.min_p is not None:
-        sampling_params["min_p"] = body.min_p
+    sampling_params = _apply_overrides(character_state.compute_sampling_params(character["sampling_preset"], summary), body)
 
-    async def event_stream():
-        content_parts = []
-        async for chunk in llama_client.chat_completion(messages, sampling_params, stream=True):
-            if chunk["type"] == "content":
-                content_parts.append(chunk["text"])
-            yield f"data: {json.dumps({'type': chunk['type'], 'delta': chunk['text']})}\n\n"
+    return _stream_assistant_reply(conn, session_id, messages, sampling_params)
 
-        reply = "".join(content_parts)
-        reply_tokens = await llama_client.tokenize(reply)
-        reply_id, reply_seq = _insert_message(conn, session_id, "assistant", reply, visible=1, token_count=reply_tokens)
-        rag.embed_and_store(conn, reply_id, session_id, reply)
 
-        if summarizer.should_trigger(conn, session_id, reply_seq):
-            asyncio.create_task(summarizer.run(session_id))
+@app.post("/api/chat/{session_id}/regenerate")
+async def regenerate(session_id: str, body: RegenerateIn):
+    conn = db.get_db()
+    session_row = conn.execute(
+        "SELECT id, character_id, status FROM sessions WHERE id = ?", (session_id,)
+    ).fetchone()
+    if session_row is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    if session_row["status"] != "active":
+        raise HTTPException(status_code=409, detail="session is archived")
 
-        yield "data: [DONE]\n\n"
+    character = _load_character(session_row["character_id"])
+    session = {"id": session_id}
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    last_row = conn.execute(
+        "SELECT id, role FROM messages WHERE session_id = ? ORDER BY seq DESC LIMIT 1", (session_id,)
+    ).fetchone()
+    if last_row is None:
+        raise HTTPException(status_code=409, detail="no messages to regenerate a reply for")
+    if last_row["role"] == "assistant":
+        conn.execute("DELETE FROM message_vectors WHERE message_id = ?", (last_row["id"],))
+        conn.execute("DELETE FROM messages WHERE id = ?", (last_row["id"],))
+        conn.commit()
+
+    summary = _get_summary(conn, session_id)
+    messages = await context_builder.build(conn, session, character, summary)
+    sampling_params = _apply_overrides(character_state.compute_sampling_params(character["sampling_preset"], summary), body)
+
+    return _stream_assistant_reply(conn, session_id, messages, sampling_params)

@@ -5,6 +5,7 @@ import ChatView from "./components/ChatView";
 import Modal from "./components/Modal";
 import AppHeader from "./components/AppHeader";
 import BackButton from "./components/BackButton";
+import LoadingOverlay from "./components/LoadingOverlay";
 import { getCharacters, getCharacter, createCharacter, updateCharacter, startCharacter } from "./api";
 import "./App.css";
 
@@ -14,6 +15,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [editInitial, setEditInitial] = useState(null);
   const [active, setActive] = useState(null);
+  const [loadingLabel, setLoadingLabel] = useState(null);
 
   const refresh = () => getCharacters().then(setCharacters);
 
@@ -22,8 +24,13 @@ export default function App() {
   }, []);
 
   const handleSelect = async (character) => {
-    const { session_id } = await startCharacter(character.id);
-    setActive({ character, sessionId: session_id });
+    setLoadingLabel(`Entering ${character.name}'s scene…`);
+    try {
+      const { session_id } = await startCharacter(character.id);
+      setActive({ character, sessionId: session_id });
+    } finally {
+      setLoadingLabel(null);
+    }
   };
 
   const handleNew = () => {
@@ -50,28 +57,34 @@ export default function App() {
   };
 
   const handleSessionReset = async () => {
-    const { session_id } = await startCharacter(active.character.id);
-    setActive({ character: active.character, sessionId: session_id });
+    setLoadingLabel(`Setting a new scene with ${active.character.name}…`);
+    try {
+      const { session_id } = await startCharacter(active.character.id);
+      setActive({ character: active.character, sessionId: session_id });
+    } finally {
+      setLoadingLabel(null);
+    }
   };
 
-  if (active) {
-    return (
-      <div className="app">
-        <BackButton onClick={() => setActive(null)}>&larr; Back to characters</BackButton>
-        <ChatView character={active.character} sessionId={active.sessionId} onSessionReset={handleSessionReset} />
-      </div>
-    );
-  }
-
   return (
-    <div className="app">
-      <AppHeader title="Role-Play" />
-      <CharacterGrid characters={characters} onSelect={handleSelect} onNew={handleNew} onEdit={handleEdit} />
-      {showForm && (
-        <Modal>
-          <CharacterForm initial={editInitial} onSubmit={handleSubmitForm} onCancel={() => setShowForm(false)} />
-        </Modal>
+    <>
+      {loadingLabel && <LoadingOverlay label={loadingLabel} />}
+      {active ? (
+        <div className="app">
+          <BackButton onClick={() => setActive(null)}>&larr; Back to characters</BackButton>
+          <ChatView character={active.character} sessionId={active.sessionId} onSessionReset={handleSessionReset} />
+        </div>
+      ) : (
+        <div className="app">
+          <AppHeader title="Role-Play" />
+          <CharacterGrid characters={characters} onSelect={handleSelect} onNew={handleNew} onEdit={handleEdit} />
+          {showForm && (
+            <Modal>
+              <CharacterForm initial={editInitial} onSubmit={handleSubmitForm} onCancel={() => setShowForm(false)} />
+            </Modal>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }

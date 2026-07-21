@@ -25,7 +25,12 @@ async def build(conn, session: dict, character: dict, summary: dict) -> list[dic
     rag_block = ""
     if rag_hits:
         bullets = "\n".join(f"- {h['content']}" for h in rag_hits)
-        rag_block = f"\n\nRelevant facts recalled from earlier conversation:\n{bullets}"
+        rag_block = (
+            "\n\nEstablished facts from earlier in this conversation. These actually happened and are true - "
+            "never contradict them or invent a different version of these events. If the user asks about "
+            "something covered here, answer using these exact details rather than making up new ones:\n"
+            f"{bullets}"
+        )
 
     fixed_text = (
         f"{persona}\n\n{character_state.RESPONSE_STYLE_DIRECTIVE}\n\n{directive}"
