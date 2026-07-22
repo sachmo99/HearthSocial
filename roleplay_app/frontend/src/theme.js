@@ -22,3 +22,8 @@ export function portraitStyle(name) {
 export function initial(name) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
+
+export function portraitImageSrc(name) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `/portraits/${slug}.png`;
+}
