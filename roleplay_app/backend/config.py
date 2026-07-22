@@ -4,6 +4,7 @@ BACKEND_DIR = Path(__file__).resolve().parent
 CHARACTERS_DIR = BACKEND_DIR / "characters"
 DATA_DIR = BACKEND_DIR / "data"
 DB_PATH = DATA_DIR / "app.db"
+PORTRAITS_DIR = BACKEND_DIR.parent / "frontend" / "public" / "portraits"
 
 LLAMA_SERVER_URL = "http://127.0.0.1:8080"
 

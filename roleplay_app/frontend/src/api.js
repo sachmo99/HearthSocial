@@ -25,6 +25,18 @@ export const getMessages = (sessionId) => json("GET", `/api/sessions/${sessionId
 export const getSessionState = (sessionId) => json("GET", `/api/sessions/${sessionId}/state`);
 export const getSessionDebug = (sessionId) => json("GET", `/api/sessions/${sessionId}/debug`);
 
+export async function uploadAvatar(name, blob) {
+  const body = new FormData();
+  body.append("name", name);
+  body.append("file", blob, "avatar.png");
+  const res = await fetch(`${API_BASE}/api/avatar`, { method: "POST", body });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || `avatar upload failed (${res.status})`);
+  }
+  return res.json();
+}
+
 async function* consumeSSEStream(res) {
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));

@@ -41,7 +41,7 @@ Three processes, each in its own terminal — all are long-running, so start the
 **1. llama-server** (single slot, deliberately — see [PROGRESS.md](PROGRESS.md) for why):
 
 ```powershell
-& "C:\Softwares\llama-cpp-vulkan\llama-server.exe" -m "<path-to-your-model.gguf>" -c 16384 -np 1 -ngl 999 -fa on -ctk q8_0 -ctv q8_0 --host 127.0.0.1 --port 8080
+& "C:\Softwares\llama-cpp-vulkan\llama-server.exe" -m "C:\Users\sachm\Downloads\mistral-12b\gemma-4-E4B-it-uncensored-Q4_K_M.gguf" -c 16384 -np 1 -ngl 999 -fa on -ctk q8_0 -ctv q8_0 --host 127.0.0.1 --port 8080
 ```
 
 **2. Backend**:

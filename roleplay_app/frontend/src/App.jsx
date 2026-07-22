@@ -6,7 +6,7 @@ import Modal from "./components/Modal";
 import AppHeader from "./components/AppHeader";
 import BackButton from "./components/BackButton";
 import LoadingOverlay from "./components/LoadingOverlay";
-import { getCharacters, getCharacter, createCharacter, updateCharacter, startCharacter } from "./api";
+import { getCharacters, getCharacter, createCharacter, updateCharacter, startCharacter, uploadAvatar } from "./api";
 import "./App.css";
 
 export default function App() {
@@ -46,11 +46,14 @@ export default function App() {
     setShowForm(true);
   };
 
-  const handleSubmitForm = async (form) => {
+  const handleSubmitForm = async (form, avatarBlob) => {
     if (editingId) {
       await updateCharacter(editingId, form);
     } else {
       await createCharacter(form);
+    }
+    if (avatarBlob) {
+      await uploadAvatar(form.name, avatarBlob);
     }
     setShowForm(false);
     refresh();

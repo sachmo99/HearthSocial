@@ -4,7 +4,7 @@ import re
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -35,6 +35,13 @@ def startup() -> None:
 def _slugify(name: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
     return slug or "character"
+
+
+def _avatar_slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+MAX_AVATAR_BYTES = 5 * 1024 * 1024
 
 
 class CharacterIn(BaseModel):
@@ -222,6 +229,21 @@ def delete_character(character_id: str):
         path.unlink()
     conn.execute("DELETE FROM characters WHERE id = ?", (character_id,))
     conn.commit()
+    return {"ok": True}
+
+
+@app.post("/api/avatar")
+async def upload_avatar(name: str = Form(...), file: UploadFile = File(...)):
+    if file.content_type != "image/png":
+        raise HTTPException(status_code=400, detail="avatar must be a PNG image")
+    data = await file.read()
+    if len(data) > MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=400, detail="image too large")
+    slug = _avatar_slug(name)
+    if not slug:
+        raise HTTPException(status_code=400, detail="invalid character name")
+    config.PORTRAITS_DIR.mkdir(parents=True, exist_ok=True)
+    (config.PORTRAITS_DIR / f"{slug}.png").write_bytes(data)
     return {"ok": True}
 
 

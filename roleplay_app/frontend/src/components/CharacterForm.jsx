@@ -1,4 +1,6 @@
 import { useState } from "react";
+import AvatarCropModal from "./AvatarCropModal";
+import { portraitImageSrc } from "../theme";
 
 const STAGES = ["stranger", "acquaintance", "friend", "confidant", "partner"];
 
@@ -16,20 +18,58 @@ const DEFAULT_FORM = {
 
 export default function CharacterForm({ initial, onSubmit, onCancel }) {
   const [form, setForm] = useState(initial || DEFAULT_FORM);
+  const [cropSrc, setCropSrc] = useState(null);
+  const [avatarBlob, setAvatarBlob] = useState(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(null);
+  const [existingAvatarFailed, setExistingAvatarFailed] = useState(false);
 
   const update = (field) => (e) => {
     const value = e.target.type === "range" ? Number(e.target.value) : e.target.value;
     setForm({ ...form, [field]: value });
   };
 
+  const pickAvatarFile = (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const confirmCrop = (blob) => {
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarBlob(blob);
+    setAvatarPreviewUrl(URL.createObjectURL(blob));
+    setCropSrc(null);
+  };
+
   const submit = (e) => {
     e.preventDefault();
-    onSubmit(form);
+    onSubmit(form, avatarBlob);
   };
 
   return (
     <form className="character-form" onSubmit={submit}>
       <h3>{initial ? "Edit Character" : "New Character"}</h3>
+      <label>
+        Avatar
+        <div className="avatar-picker">
+          {avatarPreviewUrl ? (
+            <img className="avatar-picker-preview" src={avatarPreviewUrl} alt="Avatar preview" />
+          ) : form.name && !existingAvatarFailed ? (
+            <img
+              className="avatar-picker-preview"
+              src={portraitImageSrc(form.name)}
+              alt="Current avatar"
+              onError={() => setExistingAvatarFailed(true)}
+            />
+          ) : (
+            <div className="avatar-picker-placeholder">No avatar yet</div>
+          )}
+          <input type="file" accept="image/*" onChange={pickAvatarFile} />
+        </div>
+      </label>
       <label>
         Name
         <input value={form.name} onChange={update("name")} required />
@@ -82,6 +122,9 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
           Cancel
         </button>
       </div>
+      {cropSrc && (
+        <AvatarCropModal imageSrc={cropSrc} onCancel={() => setCropSrc(null)} onConfirm={confirmCrop} />
+      )}
     </form>
   );
 }
