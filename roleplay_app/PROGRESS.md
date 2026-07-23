@@ -40,7 +40,8 @@ Frontend: catch-all `GET /{path}` serving the built SPA when `frontend/dist/` ex
 
 Every visible entity is its own component (no inlined JSX blocks):
 
-- **Shell**: `App.jsx`, `BackButton`, `Modal`, `LoadingOverlay`
+- **Shell**: `App.jsx` (thin router shell — `react-router-dom` `BrowserRouter`, wired in `main.jsx`), `BackButton`, `Modal`, `LoadingOverlay`
+- **Routes**: `/` → `HomePage` (character list, CRUD, hide/unhide — moved out of `App.jsx`), `/chat/:characterId` → `ChatPage` (resolves the character + resumes/creates its active session on load, so a refresh or direct link lands back in the same conversation instead of bouncing to the homepage)
 - **Home screen**: `Hero`, `FeaturedRow`, `CharacterGrid` → `CharacterCard` (+ edit/hide buttons) / `NewCharacterTile`, `CharacterForm` (shared create/edit, includes avatar upload via `AvatarCropModal`), `HiddenCharactersPanel` → `PinModal`
 - **Chat**: `ChatView` (orchestrator) → `ChatBanner`/`PastSessionBanner`, `ChatStatsBar`, `MessageList` → `MessageBubble` (with per-character avatar, fallback to gradient+initial) / `DirectorNoteDivider` for out-of-character cut markers, `FormattedMessage`/`ThinkingBlock`/`TypingIndicator`, `ChatInput` (message box + director's-note toggle), `ChatSettings`, `SessionHistoryPanel` (past + hidden sessions, PIN-gated unhide), `DebugPanel`
 - **Helpers**: `api.js` (fetch + SSE parsing, relative `API_BASE` so it works same-origin regardless of hostname), `theme.js` (per-character portrait gradient/image, stage labels), `formatting.js` (dialogue/action/monologue parsing), `fonts.css` (local `@font-face` declarations)
@@ -67,6 +68,7 @@ Every visible entity is its own component (no inlined JSX blocks):
 - Collapsible debug panel showing the live structured summary state and the exact RAG hits used for the current turn.
 - **Firelight design system**: sapphire-black + amber-orange theme (oklch color tokens), three font roles (Manrope sans, Cormorant Garamond serif for headings, Georgia for body text), hero + featured-row + roster home-screen layout, all fonts served locally rather than from a CDN.
 - **Frontend served by the backend**: `npm run build` produces `frontend/dist/`, which FastAPI mounts directly (`/assets` static files + SPA catch-all route) — one port (8000) for both API and UI, no CORS configuration needed, works identically whether accessed via `localhost` or `127.0.0.1`. `roleplay_app/run.ps1` activates the venv and starts uvicorn in one step.
+- **Real client-side routing**: added `react-router-dom` (`/` and `/chat/:characterId`) so the URL reflects which character's chat is open. This fixes a real bug — refreshing the page, or opening a link on a second device, previously always bounced to the homepage because the "which screen am I on" state lived only in memory. The backend's existing SPA catch-all already served `index.html` for any unrecognized path, so no backend change was needed — the router just started actually using that.
 
 ## Decisions & constraints worth remembering
 
