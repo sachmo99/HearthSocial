@@ -3,10 +3,12 @@ import CharacterGrid from "./components/CharacterGrid";
 import CharacterForm from "./components/CharacterForm";
 import ChatView from "./components/ChatView";
 import Modal from "./components/Modal";
-import AppHeader from "./components/AppHeader";
+import Hero from "./components/Hero";
+import FeaturedRow from "./components/FeaturedRow";
+import HiddenCharactersPanel from "./components/HiddenCharactersPanel";
 import BackButton from "./components/BackButton";
 import LoadingOverlay from "./components/LoadingOverlay";
-import { getCharacters, getCharacter, createCharacter, updateCharacter, startCharacter, uploadAvatar } from "./api";
+import { getCharacters, getCharacter, createCharacter, updateCharacter, startCharacter, uploadAvatar, hideCharacter } from "./api";
 import "./App.css";
 
 export default function App() {
@@ -59,6 +61,11 @@ export default function App() {
     refresh();
   };
 
+  const handleHideCharacter = async (character) => {
+    await hideCharacter(character.id);
+    refresh();
+  };
+
   const handleSessionReset = async () => {
     setLoadingLabel(`Setting a new scene with ${active.character.name}…`);
     try {
@@ -73,14 +80,22 @@ export default function App() {
     <>
       {loadingLabel && <LoadingOverlay label={loadingLabel} />}
       {active ? (
-        <div className="app">
+        <div className="app app-chat">
           <BackButton onClick={() => setActive(null)}>&larr; Back to characters</BackButton>
           <ChatView character={active.character} sessionId={active.sessionId} onSessionReset={handleSessionReset} />
         </div>
       ) : (
-        <div className="app">
-          <AppHeader title="Role-Play" />
-          <CharacterGrid characters={characters} onSelect={handleSelect} onNew={handleNew} onEdit={handleEdit} />
+        <div className="app app-home">
+          <Hero />
+          <FeaturedRow characters={characters} onSelect={handleSelect} />
+          <CharacterGrid
+            characters={characters}
+            onSelect={handleSelect}
+            onNew={handleNew}
+            onEdit={handleEdit}
+            onHide={handleHideCharacter}
+          />
+          <HiddenCharactersPanel onUnhidden={refresh} />
           {showForm && (
             <Modal>
               <CharacterForm initial={editInitial} onSubmit={handleSubmitForm} onCancel={() => setShowForm(false)} />

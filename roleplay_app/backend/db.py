@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   character_id TEXT NOT NULL REFERENCES characters(id),
   status TEXT NOT NULL CHECK(status IN ('active','archived')),
   created_at TEXT NOT NULL,
-  archived_at TEXT
+  archived_at TEXT,
+  hidden INTEGER NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_session ON sessions(character_id) WHERE status = 'active';
 
@@ -57,6 +58,13 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()}
+    if "hidden" not in cols:
+        conn.execute("ALTER TABLE sessions ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+
+
 def get_db() -> sqlite3.Connection:
     global _conn
     if _conn is None:
@@ -69,6 +77,7 @@ def get_db() -> sqlite3.Connection:
         conn.enable_load_extension(False)
         conn.executescript(SCHEMA)
         conn.commit()
+        _migrate(conn)
         _conn = conn
     return _conn
 

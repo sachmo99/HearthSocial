@@ -1,0 +1,49 @@
+/* Manrope (sans-serif) */
+@font-face {
+  font-family: "Manrope";
+  font-weight: 400;
+  font-style: normal;
+  src: url("/fonts/manrope-400.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-weight: 500;
+  font-style: normal;
+  src: url("/fonts/manrope-500.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-weight: 600;
+  font-style: normal;
+  src: url("/fonts/manrope-600.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-weight: 700;
+  font-style: normal;
+  src: url("/fonts/manrope-700.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* Cormorant Garamond (serif) */
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-weight: 500;
+  font-style: normal;
+  src: url("/fonts/cormorant-garamond-500.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-weight: 600;
+  font-style: normal;
+  src: url("/fonts/cormorant-garamond-600.ttf") format("truetype");
+  font-display: swap;
+}

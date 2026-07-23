@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getMessages, getSessionState, streamChat, regenerateResponse, clearChat, listSessions } from "../api";
+import { getMessages, getSessionState, streamChat, regenerateResponse, clearChat, listSessions, hideSession } from "../api";
 import ChatBanner from "./ChatBanner";
 import PastSessionBanner from "./PastSessionBanner";
 import ChatStatsBar from "./ChatStatsBar";
@@ -12,6 +12,7 @@ import DebugPanel from "./DebugPanel";
 export default function ChatView({ character, sessionId, onSessionReset }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [directorNote, setDirectorNote] = useState("");
   const [sending, setSending] = useState(false);
   const [sessionState, setSessionState] = useState(null);
   const [overrides, setOverrides] = useState(null);
@@ -67,15 +68,22 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
   };
 
   const send = async () => {
-    if (!input.trim() || sending) return;
-    const userMessage = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage, { role: "assistant", content: "", reasoning: "" }]);
+    const messageToSend = input.trim();
+    const note = directorNote.trim();
+    if ((!messageToSend && !note) || sending) return;
+    setMessages((prev) => [
+      ...prev,
+      ...(messageToSend ? [{ role: "user", content: messageToSend }] : []),
+      ...(note ? [{ role: "hidden_trigger", content: note }] : []),
+      { role: "assistant", content: "", reasoning: "" },
+    ]);
     setInput("");
+    setDirectorNote("");
     setSending(true);
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
-      await consumeStream(streamChat(sessionId, userMessage.content, overrides, controller.signal));
+      await consumeStream(streamChat(sessionId, messageToSend, note, overrides, controller.signal));
     } catch (err) {
       if (err.name !== "AbortError") throw err;
     } finally {
@@ -116,6 +124,11 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     setHistoryOpen(false);
   };
 
+  const handleHideSession = async (id) => {
+    await hideSession(id);
+    refreshSessions();
+  };
+
   const pastSessions = sessions.filter((s) => s.id !== sessionId);
 
   return (
@@ -146,11 +159,27 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
         onRegenerate={regenerate}
       />
 
-      {!viewing && <ChatInput value={input} onChange={setInput} onSubmit={send} disabled={sending} />}
+      {!viewing && (
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSubmit={send}
+          disabled={sending}
+          directorNote={directorNote}
+          onDirectorNoteChange={setDirectorNote}
+        />
+      )}
       {!viewing && <DebugPanel sessionId={sessionId} />}
 
       {historyOpen && (
-        <SessionHistoryPanel sessions={pastSessions} onSelect={handleViewSession} onClose={() => setHistoryOpen(false)} />
+        <SessionHistoryPanel
+          sessions={pastSessions}
+          characterId={character.id}
+          onSelect={handleViewSession}
+          onClose={() => setHistoryOpen(false)}
+          onHide={handleHideSession}
+          onUnhidden={refreshSessions}
+        />
       )}
 
       {showSettings && sessionState && !viewing && (

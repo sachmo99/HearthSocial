@@ -6,7 +6,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import character_state
@@ -18,12 +19,7 @@ import rag
 import summarizer
 
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS middleware removed since frontend is served from same origin
 
 
 @app.on_event("startup")
@@ -58,6 +54,7 @@ class CharacterIn(BaseModel):
 
 class ChatIn(BaseModel):
     message: str
+    director_note: str | None = None
     temperature: float | None = None
     top_p: float | None = None
     top_k: int | None = None
@@ -82,17 +79,19 @@ def _card_to_initial_state(card: CharacterIn) -> dict:
         "character_closeness": card.character_closeness,
         "relationship_stage": card.relationship_stage,
         "notable_facts": [],
+        "relationship_history": [],
         "last_updated_seq": 0,
     }
 
 
-def _write_character_file(character_id: str, card: CharacterIn) -> Path:
+def _write_character_file(character_id: str, card: CharacterIn, hidden: bool = False) -> Path:
     data = {
         "name": card.name,
         "persona": card.persona,
         "opening_trigger_template": card.opening_trigger_template,
         "sampling_preset": card.sampling_preset,
         "initial_state": _card_to_initial_state(card),
+        "hidden": hidden,
     }
     path = config.CHARACTERS_DIR / f"{character_id}.json"
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -182,8 +181,60 @@ def _stream_assistant_reply(conn, session_id: str, messages: list[dict], samplin
 @app.get("/api/characters")
 def list_characters():
     conn = db.get_db()
-    rows = conn.execute("SELECT id, name FROM characters ORDER BY name").fetchall()
-    return [{"id": r["id"], "name": r["name"]} for r in rows]
+    rows = conn.execute("SELECT id, name, file_path FROM characters ORDER BY name").fetchall()
+    result = []
+    for r in rows:
+        card = json.loads(Path(r["file_path"]).read_text(encoding="utf-8"))
+        if card.get("hidden"):
+            continue
+        state = card.get("initial_state", {})
+        result.append({
+            "id": r["id"],
+            "name": r["name"],
+            "persona": card.get("persona", ""),
+            "relationship_stage": state.get("relationship_stage", "stranger"),
+        })
+    return result
+
+
+@app.get("/api/hidden/characters")
+def list_hidden_characters():
+    conn = db.get_db()
+    rows = conn.execute("SELECT id, name, file_path FROM characters ORDER BY name").fetchall()
+    result = []
+    for r in rows:
+        card = json.loads(Path(r["file_path"]).read_text(encoding="utf-8"))
+        if card.get("hidden"):
+            result.append({"id": r["id"], "name": r["name"]})
+    return result
+
+
+class UnhideIn(BaseModel):
+    pin: str
+
+
+@app.post("/api/characters/{character_id}/hide")
+def hide_character(character_id: str):
+    path = config.CHARACTERS_DIR / f"{character_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="character not found")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["hidden"] = True
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return {"ok": True}
+
+
+@app.post("/api/hidden/characters/{character_id}/unhide")
+def unhide_character(character_id: str, body: UnhideIn):
+    if body.pin != config.UNHIDE_PIN:
+        raise HTTPException(status_code=403, detail="incorrect PIN")
+    path = config.CHARACTERS_DIR / f"{character_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="character not found")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["hidden"] = False
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return {"ok": True}
 
 
 @app.get("/api/characters/{character_id}")
@@ -211,7 +262,8 @@ def update_character(character_id: str, card: CharacterIn):
     path = config.CHARACTERS_DIR / f"{character_id}.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="character not found")
-    _write_character_file(character_id, card)
+    existing_hidden = json.loads(path.read_text(encoding="utf-8")).get("hidden", False)
+    _write_character_file(character_id, card, hidden=existing_hidden)
     db.upsert_character(conn, character_id, card.name, str(path))
     return {"id": character_id}
 
@@ -293,7 +345,7 @@ def list_sessions(character_id: str):
         SELECT s.id, s.status, s.created_at, s.archived_at,
                (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id AND m.visible = 1) AS message_count
         FROM sessions s
-        WHERE s.character_id = ?
+        WHERE s.character_id = ? AND s.hidden = 0
         ORDER BY s.created_at DESC
         """,
         (character_id,),
@@ -308,6 +360,55 @@ def list_sessions(character_id: str):
         }
         for r in rows
     ]
+
+
+@app.get("/api/hidden/sessions/{character_id}")
+def list_hidden_sessions(character_id: str):
+    conn = db.get_db()
+    rows = conn.execute(
+        """
+        SELECT s.id, s.status, s.created_at, s.archived_at,
+               (SELECT COUNT(*) FROM messages m WHERE m.session_id = s.id AND m.visible = 1) AS message_count
+        FROM sessions s
+        WHERE s.character_id = ? AND s.hidden = 1
+        ORDER BY s.created_at DESC
+        """,
+        (character_id,),
+    ).fetchall()
+    return [
+        {
+            "id": r["id"],
+            "status": r["status"],
+            "created_at": r["created_at"],
+            "archived_at": r["archived_at"],
+            "message_count": r["message_count"],
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/sessions/{session_id}/hide")
+def hide_session(session_id: str):
+    conn = db.get_db()
+    row = conn.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    conn.execute("UPDATE sessions SET hidden = 1 WHERE id = ?", (session_id,))
+    conn.commit()
+    return {"ok": True}
+
+
+@app.post("/api/hidden/sessions/{session_id}/unhide")
+def unhide_session(session_id: str, body: UnhideIn):
+    if body.pin != config.UNHIDE_PIN:
+        raise HTTPException(status_code=403, detail="incorrect PIN")
+    conn = db.get_db()
+    row = conn.execute("SELECT id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    conn.execute("UPDATE sessions SET hidden = 0 WHERE id = ?", (session_id,))
+    conn.commit()
+    return {"ok": True}
 
 
 @app.post("/api/characters/{character_id}/clear")
@@ -400,9 +501,15 @@ async def chat(session_id: str, body: ChatIn):
     character = _load_character(session_row["character_id"])
     session = {"id": session_id}
 
-    user_tokens = await llama_client.tokenize(body.message)
-    user_msg_id, _ = _insert_message(conn, session_id, "user", body.message, visible=1, token_count=user_tokens)
-    rag.embed_and_store(conn, user_msg_id, session_id, body.message)
+    if body.message.strip():
+        user_tokens = await llama_client.tokenize(body.message)
+        user_msg_id, _ = _insert_message(conn, session_id, "user", body.message, visible=1, token_count=user_tokens)
+        rag.embed_and_store(conn, user_msg_id, session_id, body.message)
+
+    note = (body.director_note or "").strip()
+    if note:
+        note_tokens = await llama_client.tokenize(note)
+        _insert_message(conn, session_id, "hidden_trigger", note, visible=1, token_count=note_tokens)
 
     summary = _get_summary(conn, session_id)
     messages = await context_builder.build(conn, session, character, summary)
@@ -440,3 +547,19 @@ async def regenerate(session_id: str, body: RegenerateIn):
     sampling_params = _apply_overrides(character_state.compute_sampling_params(character["sampling_preset"], summary), body)
 
     return _stream_assistant_reply(conn, session_id, messages, sampling_params)
+
+
+# Serve built frontend static files
+frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        # Serve index.html for all routes except /api and /assets
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404)
+        file_path = frontend_dist / path if path else frontend_dist / "index.html"
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(frontend_dist / "index.html")

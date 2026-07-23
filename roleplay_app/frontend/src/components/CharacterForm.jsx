@@ -100,11 +100,25 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
       </label>
       <label>
         Starting affection ({form.character_affection})
-        <input type="range" min="0" max="100" value={form.character_affection} onChange={update("character_affection")} />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={form.character_affection}
+          onChange={update("character_affection")}
+          style={{ background: `linear-gradient(to right, var(--accent) ${form.character_affection}%, oklch(0.32 0.04 255) ${form.character_affection}%)` }}
+        />
       </label>
       <label>
         Starting closeness ({form.character_closeness})
-        <input type="range" min="0" max="100" value={form.character_closeness} onChange={update("character_closeness")} />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={form.character_closeness}
+          onChange={update("character_closeness")}
+          style={{ background: `linear-gradient(to right, var(--accent) ${form.character_closeness}%, oklch(0.32 0.04 255) ${form.character_closeness}%)` }}
+        />
       </label>
       <label>
         Starting relationship stage

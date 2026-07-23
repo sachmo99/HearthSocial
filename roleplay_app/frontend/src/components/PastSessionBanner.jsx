@@ -6,11 +6,11 @@ export default function PastSessionBanner({ character, onBack, onToggleHistory }
       <div className="chat-banner-overlay">
         <span className="chat-banner-name">{character.name} — Past Conversation</span>
         <div className="chat-banner-actions">
-          <button className="clear-button" onClick={onToggleHistory}>
-            📜 History
+          <button className="banner-icon-button" onClick={onToggleHistory} title="Past conversations" aria-label="Past conversations">
+            ☰
           </button>
-          <button className="clear-button" onClick={onBack}>
-            ← Back to Current Chat
+          <button className="banner-text-button" onClick={onBack}>
+            ← Back to current chat
           </button>
         </div>
       </div>

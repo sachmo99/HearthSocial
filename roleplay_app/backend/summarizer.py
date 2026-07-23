@@ -37,6 +37,7 @@ async def run(session_id: str) -> None:
         ).fetchone()
         previous_summary = row["summary_json"]
         last_summarized_seq = row["last_summarized_seq"]
+        previous_state = json.loads(previous_summary)
 
         transcript_rows = conn.execute(
             "SELECT role, content FROM messages WHERE session_id = ? AND seq > ? ORDER BY seq",
@@ -50,16 +51,37 @@ async def run(session_id: str) -> None:
         ).fetchone()["max_seq"]
 
         stage_list = ", ".join(character_state.VALID_STAGES)
+        if len(previous_state.get("notable_facts", [])) >= config.NOTABLE_FACTS_CONSOLIDATE_THRESHOLD:
+            facts_instruction = (
+                "notable_facts has grown long. Consolidate it now: merge overlapping or related facts into "
+                "fewer, denser statements. Preserve every distinct piece of information - never delete a fact, "
+                "only merge and rephrase for concision. Return a shorter, well-organized list."
+            )
+        else:
+            facts_instruction = "Append new durable facts to notable_facts rather than replacing the list."
+
         prompt = (
             "You maintain a running structured JSON state for a role-play character. "
             "Merge/update the JSON state below using the new transcript. "
             "Preserve every existing field unless the transcript explicitly changes it - never null out or omit prior memory. "
-            "Adjust character_affection and character_closeness incrementally (small integer steps) based on how the user "
-            "treated the character in this transcript (kind/vulnerable -> nudge up; dismissive/cruel -> nudge down; "
-            "neutral -> unchanged). "
+            f"Adjust character_affection and character_closeness incrementally based on how the user treated the "
+            f"character in this transcript (kind/vulnerable -> nudge up; dismissive/cruel -> nudge down; neutral -> "
+            f"unchanged). Move by at most {config.MAX_STAT_DELTA_PER_CYCLE} points in either direction this cycle, "
+            "even for a dramatic transcript - large shifts happen gradually across multiple cycles, not in one jump. "
             f"relationship_stage must be set to exactly one of these values, with no extra words added: {stage_list}. "
-            "Only advance it if the transcript clearly earns it. "
-            "Append new durable facts to notable_facts rather than replacing the list. "
+            "Only advance it if the transcript clearly earns it AND affection/closeness are already high enough to "
+            "support that stage - a numeric gate will reject an unsupported jump and revert it, so do not advance "
+            "preemptively expecting affection to catch up later. "
+            "If relationship_stage changes from its previous value, append exactly one short entry to "
+            "relationship_history describing what happened and why the relationship advanced (e.g. 'Became "
+            "friends after helping fix the bookshelf.'). If relationship_stage does not change, leave "
+            "relationship_history exactly as it was - never rewrite or remove past entries. "
+            "character_mood must be a short phrase or clause (a few words, never a full sentence) describing the "
+            "character's current emotional state, e.g. 'quietly pleased' or 'a little on edge'. "
+            "character_memory must stay concise (2-3 sentences) and describe the relationship dynamic plainly and "
+            "factually - avoid superlative or escalating language (e.g. 'sacred', 'destiny', 'profound', "
+            "'transcendent'); state what is actually happening, not how monumental it feels. "
+            f"{facts_instruction} "
             "Respond with ONLY the updated JSON object, no other text.\n\n"
             f"Previous state:\n{previous_summary}\n\n"
             f"New transcript:\n{transcript}"
@@ -82,8 +104,63 @@ async def run(session_id: str) -> None:
             return
 
         if merged.get("relationship_stage") not in character_state.VALID_STAGES:
-            previous_stage = json.loads(previous_summary).get("relationship_stage")
+            previous_stage = previous_state.get("relationship_stage")
             merged["relationship_stage"] = previous_stage if previous_stage in character_state.VALID_STAGES else "acquaintance"
+
+        facts = merged.get("notable_facts")
+        if not isinstance(facts, list):
+            print(f"[summarizer] session {session_id}: model returned non-list notable_facts ({facts!r}), wrapping as a single entry")
+            merged["notable_facts"] = [facts] if facts else []
+
+        if not merged["notable_facts"] and previous_state.get("notable_facts"):
+            print(f"[summarizer] session {session_id}: model returned empty notable_facts, keeping previous list")
+            merged["notable_facts"] = previous_state["notable_facts"]
+
+        history = merged.get("relationship_history")
+        if not isinstance(history, list):
+            print(f"[summarizer] session {session_id}: model returned non-list relationship_history ({history!r}), wrapping as a single entry")
+            merged["relationship_history"] = [history] if history else []
+
+        if not merged["relationship_history"] and previous_state.get("relationship_history"):
+            print(f"[summarizer] session {session_id}: model returned empty relationship_history, keeping previous list")
+            merged["relationship_history"] = previous_state["relationship_history"]
+
+        def _clamp_stat(value, previous):
+            previous = max(0, min(100, previous))
+            try:
+                value = max(0, min(100, int(value)))
+            except (TypeError, ValueError):
+                return previous
+            delta = value - previous
+            if delta > config.MAX_STAT_DELTA_PER_CYCLE:
+                return previous + config.MAX_STAT_DELTA_PER_CYCLE
+            if delta < -config.MAX_STAT_DELTA_PER_CYCLE:
+                return previous - config.MAX_STAT_DELTA_PER_CYCLE
+            return value
+
+        merged["character_affection"] = _clamp_stat(merged.get("character_affection"), previous_state.get("character_affection", 0))
+        merged["character_closeness"] = _clamp_stat(merged.get("character_closeness"), previous_state.get("character_closeness", 0))
+
+        previous_stage = previous_state.get("relationship_stage", "stranger")
+        if previous_stage not in character_state.VALID_STAGES:
+            previous_stage = "stranger"
+        new_stage = merged["relationship_stage"]
+        if character_state.stage_rank(new_stage) > character_state.stage_rank(previous_stage):
+            min_affection, min_closeness = character_state.stage_thresholds(new_stage)
+            if merged["character_affection"] < min_affection or merged["character_closeness"] < min_closeness:
+                print(
+                    f"[summarizer] session {session_id}: blocked stage advance {previous_stage} -> {new_stage} "
+                    f"(affection={merged['character_affection']}, closeness={merged['character_closeness']}, "
+                    f"needs >= {min_affection}/{min_closeness}); reverting to {previous_stage}"
+                )
+                merged["relationship_stage"] = previous_stage
+                merged["relationship_history"] = previous_state.get("relationship_history", merged["relationship_history"])
+
+        memory = merged.get("character_memory", "")
+        if isinstance(memory, str) and len(memory) > config.MAX_CHARACTER_MEMORY_CHARS:
+            truncated = memory[: config.MAX_CHARACTER_MEMORY_CHARS]
+            last_stop = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
+            merged["character_memory"] = truncated[: last_stop + 1] if last_stop > 0 else truncated.rstrip()
 
         merged["last_updated_seq"] = new_last_seq
         conn.execute(

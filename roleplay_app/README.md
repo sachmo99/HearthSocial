@@ -83,12 +83,13 @@ Either use the "+ New Character" tile in the UI, or hand-author a JSON file in `
     "character_closeness": 10,
     "relationship_stage": "stranger",
     "notable_facts": [],
+    "relationship_history": [],
     "last_updated_seq": 0
   }
 }
 ```
 
-`relationship_stage` must be one of `stranger`, `acquaintance`, `friend`, `confidant`, `partner`, `spouse`, `family` — the summarizer is constrained to only ever pick from this set going forward.
+`relationship_stage` must be one of `stranger`, `acquaintance`, `friend`, `confidant`, `partner`, `spouse`, `family`, `taboo` — the summarizer is constrained to only ever pick from this set going forward. `relationship_history` is a running, ordered log of *why* the stage changed each time (e.g. "Became friends after helping fix the bookshelf.") — distinct from `notable_facts`, which is a general grab-bag of durable facts unrelated to the relationship arc.
 
 ## Configuration
 
@@ -100,8 +101,10 @@ Key knobs live in `backend/config.py`:
 | `GENERATION_HEADROOM_TOKENS` | 1024 | Reserved for the reply, subtracted from the prompt budget |
 | `RECENT_MESSAGE_CAP` | 20 | Max raw messages kept verbatim in the prompt |
 | `SUMMARIZE_EVERY_N_MESSAGES` | 10 | How often the structured memory state gets re-derived |
+| `NOTABLE_FACTS_CONSOLIDATE_THRESHOLD` | 12 | Once `notable_facts` reaches this many entries, the summarizer merges/condenses them instead of just appending |
 | `RAG_TOP_K` / `RAG_OVERFETCH_K` | 5 / 50 | RAG result count / candidate pool size |
 | `SAMPLING_PRESETS` | calm / balanced / chaotic | Base temperature/top_p/top_k/min_p per personality preset |
+| `UNHIDE_PIN` | `1234` | PIN required to unhide a hidden character or conversation. Override at launch: `ROLEPLAY_UNHIDE_PIN=5678` set before starting uvicorn |
 
 ## Known limitations
 

@@ -6,14 +6,14 @@ export default function ChatBanner({ character, onOpenSettings, onClear, onToggl
       <div className="chat-banner-overlay">
         <span className="chat-banner-name">{character.name}</span>
         <div className="chat-banner-actions">
-          <button className="clear-button" onClick={onToggleHistory}>
-            📜 History
+          <button className="banner-icon-button" onClick={onToggleHistory} title="Past conversations" aria-label="Past conversations">
+            ☰
           </button>
-          <button className="clear-button" onClick={onOpenSettings}>
-            ⚙ Settings
+          <button className="banner-icon-button" onClick={onOpenSettings} title="Response parameters" aria-label="Response parameters">
+            ⚙
           </button>
-          <button className="clear-button" onClick={onClear}>
-            Clear Chat
+          <button className="banner-icon-button" onClick={onClear} title="Clear chat" aria-label="Clear chat">
+            🗑
           </button>
         </div>
       </div>

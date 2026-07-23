@@ -36,9 +36,32 @@ _STAGE_DIRECTIVES = {
     "partner": "You are romantic partners; deep intimacy and trust are appropriate.",
     "spouse": "You are married; deep intimacy and trust are appropriate.",
     "family": "You are family; deep intimacy and trust are appropriate.",
+    "taboo": "You are in a taboo relationship; deep intimacy and trust are appropriate, but be mindful of the social consequences.",
 }
 
 VALID_STAGES = tuple(_STAGE_DIRECTIVES.keys())
+
+# (min_affection, min_closeness) required before the summarizer is allowed to advance INTO this stage.
+# "family" is an alternate, non-romantic framing, so it sits at a lower bar than partner/spouse/taboo.
+_STAGE_THRESHOLDS = {
+    "stranger": (0, 0),
+    "acquaintance": (15, 10),
+    "friend": (35, 25),
+    "confidant": (55, 45),
+    "family": (50, 40),
+    "partner": (70, 55),
+    "taboo": (75, 60),
+    "spouse": (80, 65),
+}
+
+
+def stage_rank(stage: str) -> int:
+    aff, close = _STAGE_THRESHOLDS.get(stage, (0, 0))
+    return aff + close
+
+
+def stage_thresholds(stage: str) -> tuple[int, int]:
+    return _STAGE_THRESHOLDS.get(stage, (0, 0))
 
 _AGITATED_WORDS = {"angry", "annoyed", "agitated", "furious", "irritated", "anxious"}
 _WITHDRAWN_WORDS = {"sad", "withdrawn", "melancholic", "depressed", "numb", "tired"}

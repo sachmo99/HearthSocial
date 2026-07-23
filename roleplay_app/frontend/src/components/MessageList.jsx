@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import MessageBubble from "./MessageBubble";
+import DirectorNoteDivider from "./DirectorNoteDivider";
 
 const MessageList = forwardRef(function MessageList(
   { messages, characterName, sending, canRegenerate, onRegenerate },
@@ -9,6 +10,9 @@ const MessageList = forwardRef(function MessageList(
     <div className="chat-messages">
       {messages.map((m, i) => {
         const isLast = i === messages.length - 1;
+        if (m.role === "hidden_trigger") {
+          return <DirectorNoteDivider key={i} text={m.content} />;
+        }
         return (
           <MessageBubble
             key={i}

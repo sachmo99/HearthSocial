@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { portraitStyle, initial, portraitImageSrc } from "../theme";
 
-export default function CharacterCard({ character, onSelect, onEdit }) {
+export default function CharacterCard({ character, onSelect, onEdit, onHide }) {
   const [imageFailed, setImageFailed] = useState(false);
   return (
     <div className="character-card">
@@ -19,6 +19,17 @@ export default function CharacterCard({ character, onSelect, onEdit }) {
           />
         )}
         <div className="character-tile-name">{character.name}</div>
+      </button>
+      <button
+        className="character-hide-button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onHide(character);
+        }}
+        aria-label={`Hide ${character.name}`}
+        title="Hide character"
+      >
+        🙈
       </button>
       <button
         className="character-edit-button"

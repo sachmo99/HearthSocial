@@ -24,19 +24,23 @@ export default function ChatSettings({ initial, onApply, onReset, onClose }) {
             ×
           </button>
         </div>
-        {Object.entries(RANGES).map(([field, range]) => (
-          <label key={field}>
-            {range.label} ({values[field]})
-            <input
-              type="range"
-              min={range.min}
-              max={range.max}
-              step={range.step}
-              value={values[field]}
-              onChange={update(field)}
-            />
-          </label>
-        ))}
+        {Object.entries(RANGES).map(([field, range]) => {
+          const pct = ((values[field] - range.min) / (range.max - range.min)) * 100;
+          return (
+            <label key={field}>
+              {range.label} ({values[field]})
+              <input
+                type="range"
+                min={range.min}
+                max={range.max}
+                step={range.step}
+                value={values[field]}
+                onChange={update(field)}
+                style={{ background: `linear-gradient(to right, var(--accent) ${pct}%, oklch(0.32 0.04 255) ${pct}%)` }}
+              />
+            </label>
+          );
+        })}
         <div className="character-form-actions">
           <button onClick={() => onApply(values)}>Apply</button>
           <button onClick={onReset}>Reset to Character Defaults</button>

@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "";
 
 async function json(method, path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -24,6 +24,14 @@ export const listSessions = (characterId) => json("GET", `/api/characters/${char
 export const getMessages = (sessionId) => json("GET", `/api/sessions/${sessionId}/messages`);
 export const getSessionState = (sessionId) => json("GET", `/api/sessions/${sessionId}/state`);
 export const getSessionDebug = (sessionId) => json("GET", `/api/sessions/${sessionId}/debug`);
+
+export const hideCharacter = (id) => json("POST", `/api/characters/${id}/hide`);
+export const listHiddenCharacters = () => json("GET", "/api/hidden/characters");
+export const unhideCharacter = (id, pin) => json("POST", `/api/hidden/characters/${id}/unhide`, { pin });
+
+export const hideSession = (sessionId) => json("POST", `/api/sessions/${sessionId}/hide`);
+export const listHiddenSessions = (characterId) => json("GET", `/api/hidden/sessions/${characterId}`);
+export const unhideSession = (sessionId, pin) => json("POST", `/api/hidden/sessions/${sessionId}/unhide`, { pin });
 
 export async function uploadAvatar(name, blob) {
   const body = new FormData();
@@ -62,11 +70,11 @@ async function* consumeSSEStream(res) {
   }
 }
 
-export async function* streamChat(sessionId, message, overrides, signal) {
+export async function* streamChat(sessionId, message, directorNote, overrides, signal) {
   const res = await fetch(`${API_BASE}/api/chat/${sessionId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, ...(overrides || {}) }),
+    body: JSON.stringify({ message, director_note: directorNote || null, ...(overrides || {}) }),
     signal,
   });
   yield* consumeSSEStream(res);

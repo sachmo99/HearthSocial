@@ -1,29 +1,42 @@
 :root {
-  --bg: #f3e9d2;
-  --bg-panel: #fbf6ea;
-  --bg-panel-2: #ecdfc2;
-  --text: #3b2e22;
-  --text-dim: #8a7860;
-  --accent: #a8763e;
-  --accent-soft: rgba(168, 118, 62, 0.15);
-  --accent-contrast: #2a1c0e;
-  --user: #8c5a7c;
-  --user-soft: rgba(140, 90, 124, 0.16);
-  --border: rgba(122, 90, 50, 0.28);
-  --shadow: 0 14px 30px rgba(90, 65, 40, 0.18);
+  /* Firelight: sapphire-black base, glowing amber-orange accent */
+  --bg: oklch(0.14 0.02 255);
+  --bg-panel: oklch(0.19 0.025 255);
+  --bg-panel-2: oklch(0.23 0.03 255);
+  --bg-panel-3: oklch(0.17 0.02 255);
+  --text: oklch(0.94 0.01 255);
+  --text-dim: oklch(0.65 0.03 255);
+  --text-faint: oklch(0.55 0.03 255);
 
-  --monologue: #5b6b78;
+  --accent: #e8934a;
+  --accent-light: rgb(240, 185, 137);
+  --accent-soft: rgba(232, 147, 74, 0.32);
+  --accent-contrast: rgb(46, 29, 15);
+  --accent-glow-home: rgba(232, 147, 74, 0.3);
+  --accent-glow-chat: rgba(232, 147, 74, 0.25);
+  --accent-history-border: rgba(232, 147, 74, 0.5);
+  --accent-history-bg: rgba(232, 147, 74, 0.15);
 
-  --banner-text: #fbf6ea;
-  --banner-text-dim: rgba(251, 246, 234, 0.75);
-  --banner-overlay: rgba(42, 28, 14, 0.92);
-  --banner-overlay-fade: rgba(42, 28, 14, 0.1);
+  --user: oklch(0.62 0.1 255);
+  --user-soft: oklch(0.3 0.06 255 / 0.5);
+  --user-text: oklch(0.78 0.08 255);
 
-  --sans: "Segoe UI", system-ui, Roboto, sans-serif;
-  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --border: oklch(0.34 0.045 255);
+  --shadow: 0 24px 50px rgba(0, 8, 25, 0.5);
+
+  --monologue: oklch(63.273% 0.13689 255.95);
+
+  --banner-text: oklch(0.97 0.02 255);
+  --banner-text-dim: oklch(0.9 0.02 255);
+  --banner-overlay: var(--bg-panel);
+  --banner-overlay-fade: rgba(8, 15, 40, 0.1);
+
+  --sans: "Manrope", system-ui, sans-serif;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  --serif-body: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
 
   font: 16px/1.5 var(--sans);
-  color-scheme: light;
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -41,7 +54,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(ellipse at top, rgba(255, 255, 255, 0.6), transparent 60%), var(--bg);
+  background: var(--bg);
 }
 
 #root {

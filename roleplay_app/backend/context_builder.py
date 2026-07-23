@@ -12,22 +12,25 @@ async def build(conn, session: dict, character: dict, summary: dict) -> list[dic
     summary_text = json.dumps(summary)
 
     all_rows = conn.execute(
-        "SELECT seq, role, content, token_count FROM messages WHERE session_id = ? ORDER BY seq DESC",
+        "SELECT seq, role, content, token_count, visible FROM messages WHERE session_id = ? ORDER BY seq DESC",
         (session["id"],),
     ).fetchall()
     if not all_rows:
         raise ValueError("context_builder.build called with no messages in session")
 
     query_text = all_rows[0]["content"]
+    latest_seq = all_rows[0]["seq"]
     recent_seqs = {row["seq"] for row in all_rows[: config.RECENT_MESSAGE_CAP]}
     rag_hits = [h for h in rag.retrieve_top_k(conn, session["id"], query_text) if h["seq"] not in recent_seqs]
 
     rag_block = ""
     if rag_hits:
-        bullets = "\n".join(f"- {h['content']}" for h in rag_hits)
+        bullets = "\n".join(f"- ({latest_seq - h['seq']} messages ago) {h['content']}" for h in rag_hits)
         rag_block = (
-            "\n\nEstablished facts from earlier in this conversation. These actually happened and are true - "
-            "never contradict them or invent a different version of these events. If the user asks about "
+            "\n\nEstablished facts from earlier in this conversation, each tagged with how long ago it was said. "
+            "These actually happened and are true, but they are historical - the relationship and character's "
+            "state have likely moved on since. Weigh older entries as past context, not as the character's "
+            "current stance, and never let them override the Current state above. If the user asks about "
             "something covered here, answer using these exact details rather than making up new ones:\n"
             f"{bullets}"
         )
@@ -53,6 +56,15 @@ async def build(conn, session: dict, character: dict, summary: dict) -> list[dic
 
     messages = [{"role": "system", "content": fixed_text}]
     for row in recent_rows:
+        if row["role"] == "hidden_trigger" and row["visible"]:
+            # Director's-note cut: stored as plain text for a clean chat-log display,
+            # wrapped here only for the model so it reads as out-of-character guidance.
+            content = (
+                "[Director's note - out-of-character guidance, not something the character says or hears as "
+                f"dialogue. Use it to shape what happens next: {row['content']}]"
+            )
+        else:
+            content = row["content"]
         role = "assistant" if row["role"] == "assistant" else "user"
-        messages.append({"role": role, "content": row["content"]})
+        messages.append({"role": role, "content": content})
     return messages

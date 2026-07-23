@@ -1,10 +1,4 @@
-const STAGE_LABELS = {
-  stranger: "Stranger",
-  acquaintance: "Acquaintance",
-  friend: "Friend",
-  confidant: "Confidant",
-  partner: "Partner",
-};
+import { stageLabel } from "../theme";
 
 export default function ChatStatsBar({ state }) {
   return (
@@ -15,8 +9,8 @@ export default function ChatStatsBar({ state }) {
       <span className="stat" title="Closeness">
         🤝 {state.character_closeness}
       </span>
-      <span className="stat" title="Mood">
-        🎭 {state.character_mood || "—"}
+      <span className="stat stat-mood" title={state.character_mood || "Mood"}>
+        🎭 Mood: {state.character_mood || "—"}
       </span>
       {typeof state.messages_until_summary === "number" && (
         <span className="stat" title="Messages until the next memory summary update">
@@ -29,7 +23,7 @@ export default function ChatStatsBar({ state }) {
         </span>
       )}
       <span className="stat stage-badge" title="Relationship stage">
-        {STAGE_LABELS[state.relationship_stage] || state.relationship_stage}
+        {stageLabel(state.relationship_stage)}
       </span>
     </div>
   );

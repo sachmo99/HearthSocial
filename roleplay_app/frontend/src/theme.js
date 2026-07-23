@@ -1,9 +1,9 @@
 const PALETTE = [
-  ["#c9a227", "#7c5cbf"],
-  ["#4f86c6", "#c9a227"],
-  ["#b5495b", "#4f86c6"],
-  ["#4f9d69", "#b5495b"],
-  ["#9d5fc9", "#4f9d69"],
+  ["#e8934a", "#3a2a1c"],
+  ["#c96b3e", "#2a2035"],
+  ["#b5703f", "#1f2a38"],
+  ["#8a5a4a", "#2a1c2e"],
+  ["#a8763e", "#22303c"],
 ];
 
 function hashName(name) {
@@ -26,4 +26,26 @@ export function initial(name) {
 export function portraitImageSrc(name) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
   return `/portraits/${slug}.png`;
+}
+
+const STAGE_LABELS = {
+  stranger: "Stranger",
+  acquaintance: "Acquaintance",
+  friend: "Friend",
+  confidant: "Confidant",
+  partner: "Partner",
+  spouse: "Spouse",
+  family: "Family",
+};
+
+export function stageLabel(stage) {
+  return STAGE_LABELS[stage] || stage;
+}
+
+export function blurbFromPersona(name, persona) {
+  if (!persona) return "";
+  const stripped = persona.replace(new RegExp(`^You are ${name},?\\s*`, "i"), "");
+  const sentence = stripped.split(/(?<=[.!?])\s/)[0] || stripped;
+  if (sentence.length <= 130) return sentence;
+  return `${sentence.slice(0, 127).trimEnd()}...`;
 }

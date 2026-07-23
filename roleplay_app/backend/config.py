@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -12,12 +13,18 @@ CONTEXT_WINDOW_TOKENS = 16384
 GENERATION_HEADROOM_TOKENS = 1024
 RECENT_MESSAGE_CAP = 20
 SUMMARIZE_EVERY_N_MESSAGES = 10
+NOTABLE_FACTS_CONSOLIDATE_THRESHOLD = 12
+MAX_STAT_DELTA_PER_CYCLE = 10
+MAX_CHARACTER_MEMORY_CHARS = 600
 
 EMBEDDING_MODEL_NAME = "BAAI/bge-small-en-v1.5"
 EMBEDDING_DIM = 384
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 RAG_OVERFETCH_K = 50
 RAG_TOP_K = 5
+
+# Static default; override at server bootup with, e.g., ROLEPLAY_UNHIDE_PIN=5678 before launching uvicorn.
+UNHIDE_PIN = os.environ.get("ROLEPLAY_UNHIDE_PIN", "1234")
 
 SAMPLING_PRESETS = {
     "calm": {"temperature": 0.6, "top_p": 0.9, "top_k": 40, "min_p": 0.05},
