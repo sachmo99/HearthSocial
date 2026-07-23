@@ -8,16 +8,20 @@ For the full build history, design decisions, and known gaps, see [PROGRESS.md](
 
 ## Features
 
-- Character cards with persona, opening scene, sampling personality, and starting relationship stats — create/edit them directly in the UI.
+- Character cards with persona, opening scene, sampling personality, and starting relationship stats — create/edit them directly in the UI, including an optional avatar image (upload + crop).
 - Click a character to auto-generate an opening scene in character (via a hidden system trigger you never see).
-- Structured memory: affection, closeness, relationship stage, mood, location, and durable facts, updated by the model every 10 messages (configurable), merged rather than overwritten.
-- RAG-backed recall of specific facts from anywhere earlier in the conversation, scoped per-session.
+- Structured memory: affection, closeness, relationship stage, mood, location, durable facts, and a relationship-history log (why the stage changed, and when), updated by the model every 10 messages (configurable), merged rather than overwritten.
+- Anti-drift safeguards on top of the model's own updates: a per-cycle cap on how far affection/closeness can move at once, a numeric gate that blocks the relationship stage from advancing faster than the stats actually support, and length/tone constraints on the running memory summary.
+- RAG-backed recall of specific facts from anywhere earlier in the conversation, scoped per-session, with each recalled fact tagged by how long ago it was said so the model treats it as history rather than current state.
+- A manual "director's note" (🎬 in the chat input) — a one-turn out-of-character nudge to steer the scene (e.g. "someone knocks on the door") without your character saying it; shows up as a distinct divider in the chat log.
+- Hide/unhide for both characters and individual sessions, protected by a PIN.
 - Per-message sampling override popup (temperature/top_p/top_k/min_p) — no server restart needed.
 - Live stats bar (❤️ affection, 🤝 closeness, 🎭 mood, relationship-stage badge) plus a "messages until next summary" counter and a summarizing-in-progress indicator.
 - Session history: browse and view past (cleared) conversations read-only.
 - Regenerate button to redo the last reply; in-flight generation is properly aborted when you switch characters or clear the chat, so it doesn't keep the single inference slot tied up.
 - Dialogue/action/internal-monologue visually distinguished in the chat, including recovery for models that don't perfectly follow the formatting convention.
 - Collapsible debug panel (lazy-loaded) showing the live structured summary state and the exact RAG hits used for the current turn.
+- Firelight visual theme (sapphire-black + amber-orange) with locally-hosted fonts — no external CDN calls, fully offline.
 
 ## Stack
 
@@ -36,7 +40,7 @@ For the full build history, design decisions, and known gaps, see [PROGRESS.md](
 
 ## Running it
 
-Three processes, each in its own terminal — all are long-running, so start them yourself and leave them open.
+Two long-running processes, each in its own terminal — start them yourself and leave them open. The frontend is pre-built and served directly by the backend, so there's no separate frontend dev server to run for normal use.
 
 **1. llama-server** (single slot, deliberately — see [PROGRESS.md](PROGRESS.md) for why):
 
@@ -44,24 +48,25 @@ Three processes, each in its own terminal — all are long-running, so start the
 & "C:\Softwares\llama-cpp-vulkan\llama-server.exe" -m "C:\Users\sachm\Downloads\mistral-12b\gemma-4-E4B-it-uncensored-Q4_K_M.gguf" -c 16384 -np 1 -ngl 999 -fa on -ctk q8_0 -ctv q8_0 --host 127.0.0.1 --port 8080
 ```
 
-**2. Backend**:
+**2. Backend + frontend** — from the `roleplay_app/` root:
 
 ```powershell
-cd roleplay_app\backend
-..\..\Scripts\python.exe -m uvicorn main:app --port 8000 --host 127.0.0.1
+.\run.ps1
 ```
 
-Must run as a single uvicorn worker — the background summarizer's concurrency guard is in-process memory, not shared across workers.
+This activates the venv and starts uvicorn as a single worker (required — the background summarizer's concurrency guard is in-process memory, not shared across workers). Open `http://127.0.0.1:8000` (or `http://localhost:8000` — both work identically now that the frontend calls the API with relative paths).
 
-**3. Frontend**:
+### Frontend development
+
+If you're editing frontend code, rebuild it and refresh the browser at port 8000:
 
 ```powershell
 cd roleplay_app\frontend
 npm install   # first time only
-npm run dev
+npm run build
 ```
 
-Then open the URL Vite prints (usually `http://localhost:5173`).
+Note: CORS middleware was removed once the frontend moved to the same origin as the API, so the old workflow of running a separate `npm run dev` dev server (port 5173) against the backend on port 8000 will no longer work out of the box — it would need CORS re-added first.
 
 ## Creating a character
 
@@ -104,10 +109,14 @@ Key knobs live in `backend/config.py`:
 | `NOTABLE_FACTS_CONSOLIDATE_THRESHOLD` | 12 | Once `notable_facts` reaches this many entries, the summarizer merges/condenses them instead of just appending |
 | `RAG_TOP_K` / `RAG_OVERFETCH_K` | 5 / 50 | RAG result count / candidate pool size |
 | `SAMPLING_PRESETS` | calm / balanced / chaotic | Base temperature/top_p/top_k/min_p per personality preset |
+| `MAX_STAT_DELTA_PER_CYCLE` | 10 | Max points affection/closeness can move in either direction per summarization cycle |
+| `MAX_CHARACTER_MEMORY_CHARS` | 600 | `character_memory` is truncated to this length (at a sentence boundary) after each summarization |
 | `UNHIDE_PIN` | `1234` | PIN required to unhide a hidden character or conversation. Override at launch: `ROLEPLAY_UNHIDE_PIN=5678` set before starting uvicorn |
 
 ## Known limitations
 
 - Single llama-server slot: switching characters or background summarization both compete for the same inference slot, so there's a real (not corruption, just latency) cost to interleaving them — see the KV-cache discussion in [PROGRESS.md](PROGRESS.md).
-- No avatar images — character portraits are generated gradients, by design choice so far.
 - Local/quantized models won't always perfectly honor formatting or grounding instructions (e.g. occasionally contradicting a recalled fact) — prompting reduces this but doesn't eliminate it.
+- At high affection/deep-intimacy stages, replies can drift into melodramatic/purple prose; a couple of prompt-level fixes were tried and empirically failed to help (see [PROGRESS.md](PROGRESS.md) — Known gaps). The manual director's note is currently the one reliable way to redirect tone in the moment.
+- Creating a *new* character through the UI only offers `stranger` through `partner` as a starting relationship stage — `spouse`/`family`/`taboo` are reachable through play but not selectable as a starting point yet.
+- No mobile-specific CSS breakpoints — layout is fluid enough to likely avoid breaking outright, but hasn't been verified on an actual phone.
