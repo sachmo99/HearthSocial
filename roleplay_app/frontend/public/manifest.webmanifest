@@ -1,0 +1,18 @@
+{
+  "name": "HearthSocial",
+  "short_name": "HearthSocial",
+  "description": "A local, fully offline AI companion chat app.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0f16",
+  "theme_color": "#e8934a",
+  "icons": [
+    {
+      "src": "/hearth-social-logo.png",
+      "sizes": "2048x2048",
+      "type": "image/png"
+    }
+  ]
+}

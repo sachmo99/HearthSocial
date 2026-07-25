@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listHiddenSessions, unhideSession } from "../api";
 import PinModal from "./PinModal";
+import EyeOffIcon from "./EyeOffIcon";
 
 export default function SessionHistoryPanel({ sessions, characterId, onSelect, onClose, onHide, onUnhidden }) {
   const [hidden, setHidden] = useState([]);
@@ -37,7 +38,7 @@ export default function SessionHistoryPanel({ sessions, characterId, onSelect, o
                 title="Hide this conversation"
                 aria-label="Hide this conversation"
               >
-                🙈
+                <EyeOffIcon />
               </button>
             </li>
           ))}

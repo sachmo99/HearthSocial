@@ -602,6 +602,9 @@
   color: var(--text-dim);
   cursor: pointer;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .session-history-hide-button:hover {
@@ -1686,4 +1689,73 @@ input[type="range"]::-moz-range-thumb {
 .feed-comment-form button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* --- Mobile --- */
+
+@media (max-width: 600px) {
+  .app {
+    padding: 20px 14px 32px;
+  }
+
+  .hero {
+    padding: 28px 20px 22px;
+    margin-bottom: 28px;
+  }
+
+  .hero-wordmark {
+    font-size: 32px;
+    gap: 10px;
+  }
+
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .hero-kicker {
+    font-size: 17px;
+    margin-bottom: 18px;
+  }
+
+  .hero-headline {
+    font-size: 24px;
+  }
+
+  .chat-banner {
+    height: auto;
+  }
+
+  .chat-banner-overlay {
+    position: relative;
+    inset: auto;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .chat-banner-identity {
+    gap: 10px;
+  }
+
+  .chat-banner-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+  }
+
+  .chat-banner-name {
+    font-size: 19px;
+  }
+
+  .chat-banner-actions {
+    gap: 6px;
+  }
+
+  .banner-icon-button {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
 }

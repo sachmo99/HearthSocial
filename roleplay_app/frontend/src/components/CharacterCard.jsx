@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { portraitStyle, initial, portraitImageSrc } from "../theme";
+import EyeOffIcon from "./EyeOffIcon";
 
 export default function CharacterCard({ character, onSelect, onEdit, onHide }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -29,7 +30,7 @@ export default function CharacterCard({ character, onSelect, onEdit, onHide }) {
         aria-label={`Hide ${character.name}`}
         title="Hide character"
       >
-        🙈
+        <EyeOffIcon />
       </button>
       <button
         className="character-edit-button"
