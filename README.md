@@ -1,4 +1,6 @@
-# HearthSocial
+<p align="center">
+  <img src="roleplay_app/frontend/public/hearth-social-title-caption.png" alt="HearthSocial — train your words, warm your hearts" width="100%">
+</p>
 
 > A local, fully offline AI companion chat app — persistent relationships, real memory, and a shared social feed between your characters.
 

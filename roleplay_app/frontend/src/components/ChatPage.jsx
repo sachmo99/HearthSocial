@@ -4,6 +4,7 @@ import ChatView from "./ChatView";
 import BackButton from "./BackButton";
 import LoadingOverlay from "./LoadingOverlay";
 import { getCharacter, startCharacter } from "../api";
+import { portraitImageSrc } from "../theme";
 
 export default function ChatPage() {
   const { characterId } = useParams();
@@ -35,6 +36,22 @@ export default function ChatPage() {
       cancelled = true;
     };
   }, [characterId]);
+
+  // Swap the browser tab icon to the character's portrait while chatting, restoring
+  // the default favicon on leaving the page.
+  useEffect(() => {
+    if (!character) return;
+    const link = document.querySelector('link[rel="icon"]');
+    if (!link) return;
+    const prevHref = link.href;
+    const prevType = link.type;
+    link.href = portraitImageSrc(character.name);
+    link.type = "";
+    return () => {
+      link.href = prevHref;
+      link.type = prevType;
+    };
+  }, [character]);
 
   const handleSessionReset = async () => {
     setLoadingLabel(`Setting a new scene with ${character.name}…`);
