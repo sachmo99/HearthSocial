@@ -1,6 +1,8 @@
-# Role-Play App — Progress Tracker
+# HearthSocial — Progress Tracker
 
-Local AI role-playing chat app per `DESIGN.md`, built in this `roleplay_app/` folder (the rest of the parent directory is an unrelated older prototype — untouched). Full architecture/design rationale lives in the approved plan at `C:\Users\sachm\.claude\plans\tranquil-swimming-sphinx.md`; this file tracks build status and decisions made since.
+*(Previously called "Role-Play App" — the `roleplay_app/` folder name and internal references from that era are unchanged.)*
+
+Local AI companion chat app per `DESIGN.md`, built in this `roleplay_app/` folder (the rest of the parent directory is an unrelated older prototype — untouched). Full architecture/design rationale lives in the approved plan at `C:\Users\sachm\.claude\plans\tranquil-swimming-sphinx.md`; this file tracks build status and decisions made since.
 
 ## Stack
 
@@ -28,12 +30,15 @@ Local AI role-playing chat app per `DESIGN.md`, built in this `roleplay_app/` fo
 | `summarizer.py` | every-N-messages merge into structured JSON state; enforces per-cycle delta cap, numeric stage gate, `character_memory` length truncation post-parse (doesn't trust the model to self-limit) |
 | `characters/*.json` | Aria (stranger-start), Ursula (spouse dynamic), Kiara, Rohan (friend dynamic), Professor Sharma |
 
+**Social feed** lives in `main.py` (no new router file, per the flat-and-minimal convention) plus one new table in `db.py`: `feed_posts` (character-scoped, not session-scoped — a character's public presence survives clear-chat, unlike `summaries`). Helpers: `_get_current_state()` (active-session summary, falling back to the character's `initial_state` if it's never started a chat), `_build_feed_post_messages()` / `_build_feed_reaction_messages()`. New directive constant in `character_state.py`: `FEED_POST_STYLE_DIRECTIVE` (deliberately separate from `RESPONSE_STYLE_DIRECTIVE` — plain first-person text, no `*action*`/`(monologue)` formatting).
+
 **Current tuned config** (`config.py`): `GENERATION_HEADROOM_TOKENS=1024`, `SUMMARIZE_EVERY_N_MESSAGES=10`, `MAX_STAT_DELTA_PER_CYCLE=10`, `MAX_CHARACTER_MEMORY_CHARS=600`, `NOTABLE_FACTS_CONSOLIDATE_THRESHOLD=12`.
 
 ### API routes (`main.py`)
 Characters: `GET/POST /api/characters`, `GET/PUT/DELETE /api/characters/{id}`, `POST /api/characters/{id}/start`, `POST /api/characters/{id}/clear`, `POST /api/avatar`.
 Hide/unhide: `POST /api/characters/{id}/hide`, `GET /api/hidden/characters`, `POST /api/hidden/characters/{id}/unhide`, `POST /api/sessions/{id}/hide`, `GET /api/hidden/sessions/{character_id}`, `POST /api/hidden/sessions/{id}/unhide`.
 Sessions/chat: `GET /api/characters/{id}/sessions`, `GET /api/sessions/{id}/state`, `GET /api/sessions/{id}/messages`, `GET /api/sessions/{id}/debug`, `POST /api/chat/{id}` (SSE streaming, accepts an optional `director_note`), `POST /api/chat/{id}/regenerate`.
+Feed: `GET /api/feed`, `POST /api/feed/posts`, `POST /api/feed/posts/{id}/react`, `POST /api/feed/posts/{id}/comments`.
 Frontend: catch-all `GET /{path}` serving the built SPA when `frontend/dist/` exists.
 
 ## Frontend (`roleplay_app/frontend/src/`)
@@ -44,6 +49,7 @@ Every visible entity is its own component (no inlined JSX blocks):
 - **Routes**: `/` → `HomePage` (character list, CRUD, hide/unhide — moved out of `App.jsx`), `/chat/:characterId` → `ChatPage` (resolves the character + resumes/creates its active session on load, so a refresh or direct link lands back in the same conversation instead of bouncing to the homepage)
 - **Home screen**: `Hero`, `FeaturedRow`, `CharacterGrid` → `CharacterCard` (+ edit/hide buttons) / `NewCharacterTile`, `CharacterForm` (shared create/edit, includes avatar upload via `AvatarCropModal`), `HiddenCharactersPanel` → `PinModal`
 - **Chat**: `ChatView` (orchestrator) → `ChatBanner`/`PastSessionBanner`, `ChatStatsBar`, `MessageList` → `MessageBubble` (with per-character avatar, fallback to gradient+initial) / `DirectorNoteDivider` for out-of-character cut markers, `FormattedMessage`/`ThinkingBlock`/`TypingIndicator`, `ChatInput` (message box + director's-note toggle), `ChatSettings`, `SessionHistoryPanel` (past + hidden sessions, PIN-gated unhide), `DebugPanel`
+- **Feed**: `FeedPage` (nav bar, character-picker composer, thread list) → `FeedPostCard` (post, comment thread, react-as-character picker, user comment form), `FeedAvatar` (shared circular avatar used by the composer, post headers, and comments); reachable via a "See the feed →" link from `Hero`.
 - **Helpers**: `api.js` (fetch + SSE parsing, relative `API_BASE` so it works same-origin regardless of hostname), `theme.js` (per-character portrait gradient/image, stage labels), `formatting.js` (dialogue/action/monologue parsing), `fonts.css` (local `@font-face` declarations)
 
 ## Features implemented
@@ -69,6 +75,7 @@ Every visible entity is its own component (no inlined JSX blocks):
 - **Firelight design system**: sapphire-black + amber-orange theme (oklch color tokens), three font roles (Manrope sans, Cormorant Garamond serif for headings, Georgia for body text), hero + featured-row + roster home-screen layout, all fonts served locally rather than from a CDN.
 - **Frontend served by the backend**: `npm run build` produces `frontend/dist/`, which FastAPI mounts directly (`/assets` static files + SPA catch-all route) — one port (8000) for both API and UI, no CORS configuration needed, works identically whether accessed via `localhost` or `127.0.0.1`. `roleplay_app/run.ps1` activates the venv and starts uvicorn in one step.
 - **Real client-side routing**: added `react-router-dom` (`/` and `/chat/:characterId`) so the URL reflects which character's chat is open. This fixes a real bug — refreshing the page, or opening a link on a second device, previously always bounced to the homepage because the "which screen am I on" state lived only in memory. The backend's existing SPA catch-all already served `index.html` for any unrecognized path, so no backend change was needed — the router just started actually using that.
+- **Shared social feed** (`/feed`, `feed_posts` table): characters post short in-character updates and react to each other's posts — a shared universe, not isolated per-character journals. Strictly user-triggered generation (no autonomous/scheduled posting), preserving the single-inference-slot design: a post/reaction request queues behind any in-flight chat turn (generous 300s timeout, same as the summarizer) rather than competing with it. Reactions are privacy-by-construction — the reacting character's prompt includes only the target post's public text, never the original poster's private affection/closeness/notable-facts state. Self-reaction and reacting to a comment (thread depth capped at 2 levels, enforced in application code since SQLite `CHECK` can't reference sibling rows) are both rejected server-side with a 400. Hiding a character filters their posts/reactions out of `GET /api/feed` and blocks new activity from/as them (404). `delete_character`'s existing session guard was extended to also check `feed_posts`, so a character who's only ever posted (never chatted) can't be deleted out from under a foreign-key reference. Frontend shows a dashed "ghost" post card / typing-dots comment row while a post or reaction is generating, reusing the same `TypingIndicator` component as the chat's typing state.
 
 ## Decisions & constraints worth remembering
 
@@ -78,6 +85,7 @@ Every visible entity is its own component (no inlined JSX blocks):
 - `character_state.py` relationship stages now include user-added `spouse`, `family`, and `taboo` (beyond the original stranger/acquaintance/friend/confidant/partner), each with its own numeric gate threshold in `_STAGE_THRESHOLDS`.
 - Tone/melodrama drift at high affection is treated as an **imitation problem, not an instruction-following problem**: the model tends to copy the register already present in its context (persona voice, accumulated `character_memory` prose, verbatim RAG quotes from its own past replies) more reliably than it obeys an abstract "don't use superlatives" instruction. Confirmed empirically twice — the summarizer's tone-ban and a targeted `character_state.py` directive tweak were both tested side-by-side against Kiara's real session state and produced no meaningful difference in output register. No fix has landed yet (see Known gaps); the one mechanism that reliably works for steering tone in the moment is the manual director's note, precisely because it's concrete and singular rather than one more abstract rule competing in an already-stacked prompt.
 - CORS middleware was removed entirely once the frontend was consolidated onto the same origin as the API — this means the old dev workflow (separate `npm run dev` on port 5173 talking to the backend on 8000) no longer works without re-adding CORS; for frontend changes, rebuild (`npm run build`) and refresh against port 8000 instead.
+- Feed posts are intentionally character-scoped, not session-scoped — the opposite lifetime from `summaries`, which resets on clear-chat by design. A character's public feed presence is meant to read as an ongoing identity that outlives any one private conversation.
 
 ## Known gaps
 
@@ -95,9 +103,11 @@ Every visible entity is its own component (no inlined JSX blocks):
 - Character creation, opening-scene generation, chat streaming, clear-chat archiving, avatar upload/crop, hide/unhide (both characters and sessions, including a fixed refresh bug where unhidden sessions didn't reappear until reload), and the director's note (including a fixed bug where a note-only submission with no message silently did nothing) have all been exercised end-to-end.
 - Anti-drift enforcement observed directly on Kiara's real session: a summarization cycle showed closeness moving exactly +10 (the delta cap engaging, not an unbounded jump) and affection correctly clamped at the 0–100 ceiling.
 - The affection-directive tweak for reducing melodrama was tested via a real side-by-side generation comparison against Kiara's actual state (same test message, old vs. new directive text) — confirmed to make no meaningful difference, ruling it out rather than shipping it on faith.
+- Feed backend verified in isolation: the `feed_posts` `CHECK` constraint was confirmed to reject a mismatched `author_type`/`character_id` row directly against a live `db.get_db()` connection; `npm run build` and `npm run lint` are clean for the new frontend components.
 
 ## Not yet fully verified
 
 - Long-run behavior of the affection/closeness mechanic over many real messages beyond what's been spot-checked so far.
 - Mobile/narrow-viewport rendering — not yet checked in an actual mobile browser or emulator.
 - Whether reversing the high-affection `top_p` sampling nudge actually reduces melodramatic word choice — flagged as a next experiment, not yet run.
+- Feed post/reaction generation has not yet been exercised live end-to-end against a running llama-server — the verification checklist in the addendum plan (no-active-session fallback, tone reflecting live affection/mood, reaction privacy, self-react/comment-react 400s, hide filtering, delete guard, queuing behind a live chat turn) is still outstanding.

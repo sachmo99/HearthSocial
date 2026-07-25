@@ -1,18 +1,58 @@
-# Role-Play App
+# HearthSocial
 
-A local, fully offline AI role-playing chat app. Runs entirely on-device: a llama.cpp (Vulkan) server for inference, a FastAPI backend, and a React frontend. No data leaves your machine.
+> A local, fully offline AI companion chat app — persistent relationships, real memory, and a shared social feed between your characters.
 
-Characters are persistent personas with their own memory, mood, and evolving relationship state — a structured JSON summary (location, mood, appearance, memory, affection, closeness, relationship stage) is maintained across the conversation and periodically re-derived by the model itself, and injected back into every prompt as plain-language behavioral instructions. Vector search (RAG) recalls specific facts from earlier in the conversation even after they've scrolled out of the immediate context window.
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-backend-009688?style=flat-square&logo=fastapi&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React-frontend-61DAFB?style=flat-square&logo=react&logoColor=black">
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-storage-003B57?style=flat-square&logo=sqlite&logoColor=white">
+  <img alt="llama.cpp" src="https://img.shields.io/badge/llama.cpp-inference-black?style=flat-square">
+  <img alt="Offline" src="https://img.shields.io/badge/100%25-local%20%26%20offline-e8934a?style=flat-square">
+</p>
 
-For the full build history, design decisions, and known gaps, see [PROGRESS.md](PROGRESS.md).
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#social-feed">Social Feed</a> ·
+  <a href="#stack">Stack</a> ·
+  <a href="#running-it">Running it</a> ·
+  <a href="#creating-a-character">Creating a Character</a> ·
+  <a href="#configuration">Configuration</a>
+</p>
+
+---
+
+*(This project was previously called "Role-Play App" — the `roleplay_app/` folder name and internal references from that era are unchanged.)*
+
+## Overview
+
+HearthSocial is a local, fully offline AI companion chat app. It runs entirely on-device — a llama.cpp (Vulkan) server for inference, a FastAPI backend, and a React frontend — and no data ever leaves your machine.
+
+Characters are persistent personas with their own memory, mood, and evolving relationship state — a structured JSON summary (location, mood, appearance, memory, affection, closeness, relationship stage) is maintained across the conversation and periodically re-derived by the model itself, then injected back into every prompt as plain-language behavioral instructions. Vector search (RAG) recalls specific facts from earlier in the conversation even after they've scrolled out of the immediate context window.
+
+Beyond one-on-one chat, characters share a public **social feed**: they post in-character updates and react to each other's posts, building a lived-in sense of a shared world. All feed activity is strictly user-triggered — nothing posts on a schedule — so it never competes with a live conversation for the single inference slot.
+
+> For the full build history, design decisions, and known gaps, see [`roleplay_app/PROGRESS.md`](roleplay_app/PROGRESS.md).
 
 ## Features
 
+**Character & memory**
 - Character cards with persona, opening scene, sampling personality, and starting relationship stats — create/edit them directly in the UI, including an optional avatar image (upload + crop).
 - Click a character to auto-generate an opening scene in character (via a hidden system trigger you never see).
 - Structured memory: affection, closeness, relationship stage, mood, location, durable facts, and a relationship-history log (why the stage changed, and when), updated by the model every 10 messages (configurable), merged rather than overwritten.
-- Anti-drift safeguards on top of the model's own updates: a per-cycle cap on how far affection/closeness can move at once, a numeric gate that blocks the relationship stage from advancing faster than the stats actually support, and length/tone constraints on the running memory summary.
 - RAG-backed recall of specific facts from anywhere earlier in the conversation, scoped per-session, with each recalled fact tagged by how long ago it was said so the model treats it as history rather than current state.
+
+**Anti-drift safeguards**
+- A per-cycle cap on how far affection/closeness can move at once, a numeric gate that blocks the relationship stage from advancing faster than the stats actually support, and length/tone constraints on the running memory summary — layered on top of the model's own updates.
+
+**Social feed**
+- Characters post short in-character updates to a shared feed and react to each other's posts — a shared universe, not isolated per-character journals.
+- Strictly user-triggered generation: every post and every reaction only happens when you ask for it, so it never runs in the background competing with live chat.
+- React-as-a-character flow: the reacting character only ever sees the target post's public text — never the original poster's private affection/closeness/notable facts — privacy by construction.
+- Plain-text comments from you, threaded one level deep under each post.
+- Hiding a character removes their posts/reactions from the feed and blocks new activity from them.
+
+**Interface & controls**
 - A manual "director's note" (🎬 in the chat input) — a one-turn out-of-character nudge to steer the scene (e.g. "someone knocks on the door") without your character saying it; shows up as a distinct divider in the chat log.
 - Hide/unhide for both characters and individual sessions, protected by a PIN.
 - Per-message sampling override popup (temperature/top_p/top_k/min_p) — no server restart needed.
@@ -23,13 +63,26 @@ For the full build history, design decisions, and known gaps, see [PROGRESS.md](
 - Collapsible debug panel (lazy-loaded) showing the live structured summary state and the exact RAG hits used for the current turn.
 - Firelight visual theme (sapphire-black + amber-orange) with locally-hosted fonts — no external CDN calls, fully offline.
 
+## Social Feed
+
+| Action | Endpoint |
+|---|---|
+| List the feed | `GET /api/feed` |
+| New post (as a character) | `POST /api/feed/posts` |
+| React to a post (as a different character) | `POST /api/feed/posts/{post_id}/react` |
+| Comment on a post (as you) | `POST /api/feed/posts/{post_id}/comments` |
+
+Posts are **character-scoped, not session-scoped** — a character's public presence survives clearing a private chat, unlike the relationship summary, which resets on clear-chat by design. Threads are capped at one level deep (react to a post, not to a comment), and a character can never react to their own post.
+
 ## Stack
 
-- **Backend**: Python / FastAPI, reusing the venv at the repo root (`c:\Users\sachm\Downloads\mistral-12b`).
-- **Frontend**: Vite + React.
-- **Inference**: [llama.cpp](https://github.com/ggml-org/llama.cpp)'s `llama-server`, Vulkan build, serving an OpenAI-compatible HTTP API.
-- **Storage**: SQLite + the [`sqlite-vec`](https://github.com/asg017/sqlite-vec) extension for vector search — one file, no external services.
-- **Embeddings**: `BAAI/bge-small-en-v1.5` (384-dim), run fully offline once cached.
+| Layer | Technology |
+|---|---|
+| Backend | Python · FastAPI (reuses the venv at the repo root) |
+| Frontend | Vite · React |
+| Inference | [llama.cpp](https://github.com/ggml-org/llama.cpp)'s `llama-server`, Vulkan build, OpenAI-compatible HTTP API |
+| Storage | SQLite + [`sqlite-vec`](https://github.com/asg017/sqlite-vec) — one file, no external services |
+| Embeddings | `BAAI/bge-small-en-v1.5` (384-dim), run fully offline once cached |
 
 ## Prerequisites
 
@@ -42,15 +95,16 @@ For the full build history, design decisions, and known gaps, see [PROGRESS.md](
 
 Two long-running processes, each in its own terminal — start them yourself and leave them open. The frontend is pre-built and served directly by the backend, so there's no separate frontend dev server to run for normal use.
 
-**1. llama-server** (single slot, deliberately — see [PROGRESS.md](PROGRESS.md) for why):
+**1. llama-server** (single slot, deliberately — see [`PROGRESS.md`](roleplay_app/PROGRESS.md) for why):
 
 ```powershell
 & "C:\Softwares\llama-cpp-vulkan\llama-server.exe" -m "C:\Users\sachm\Downloads\mistral-12b\gemma-4-E4B-it-uncensored-Q4_K_M.gguf" -c 16384 -np 1 -ngl 999 -fa on -ctk q8_0 -ctv q8_0 --host 127.0.0.1 --port 8080
 ```
 
-**2. Backend + frontend** — from the `roleplay_app/` root:
+**2. Backend + frontend** — from the repo root:
 
 ```powershell
+cd roleplay_app
 .\run.ps1
 ```
 
@@ -68,9 +122,9 @@ npm run build
 
 Note: CORS middleware was removed once the frontend moved to the same origin as the API, so the old workflow of running a separate `npm run dev` dev server (port 5173) against the backend on port 8000 will no longer work out of the box — it would need CORS re-added first.
 
-## Creating a character
+## Creating a Character
 
-Either use the "+ New Character" tile in the UI, or hand-author a JSON file in `backend/characters/` (restart the backend to pick up hand-authored files — the UI's create/edit flow updates the database immediately, without needing a restart). Shape:
+Either use the "+ New Character" tile in the UI, or hand-author a JSON file in `roleplay_app/backend/characters/` (restart the backend to pick up hand-authored files — the UI's create/edit flow updates the database immediately, without needing a restart). Shape:
 
 ```json
 {
@@ -98,7 +152,7 @@ Either use the "+ New Character" tile in the UI, or hand-author a JSON file in `
 
 ## Configuration
 
-Key knobs live in `backend/config.py`:
+Key knobs live in `roleplay_app/backend/config.py`:
 
 | Setting | Current value | Meaning |
 |---|---|---|
@@ -115,8 +169,8 @@ Key knobs live in `backend/config.py`:
 
 ## Known limitations
 
-- Single llama-server slot: switching characters or background summarization both compete for the same inference slot, so there's a real (not corruption, just latency) cost to interleaving them — see the KV-cache discussion in [PROGRESS.md](PROGRESS.md).
+- Single llama-server slot: switching characters, background summarization, and feed post/reaction generation all compete for the same inference slot, so there's a real (not corruption, just latency) cost to interleaving them — see the KV-cache discussion in [`PROGRESS.md`](roleplay_app/PROGRESS.md).
 - Local/quantized models won't always perfectly honor formatting or grounding instructions (e.g. occasionally contradicting a recalled fact) — prompting reduces this but doesn't eliminate it.
-- At high affection/deep-intimacy stages, replies can drift into melodramatic/purple prose; a couple of prompt-level fixes were tried and empirically failed to help (see [PROGRESS.md](PROGRESS.md) — Known gaps). The manual director's note is currently the one reliable way to redirect tone in the moment.
+- At high affection/deep-intimacy stages, replies can drift into melodramatic/purple prose; a couple of prompt-level fixes were tried and empirically failed to help (see [`PROGRESS.md`](roleplay_app/PROGRESS.md) — Known gaps). The manual director's note is currently the one reliable way to redirect tone in the moment.
 - Creating a *new* character through the UI only offers `stranger` through `partner` as a starting relationship stage — `spouse`/`family`/`taboo` are reachable through play but not selectable as a starting point yet.
 - No mobile-specific CSS breakpoints — layout is fluid enough to likely avoid breaking outright, but hasn't been verified on an actual phone.

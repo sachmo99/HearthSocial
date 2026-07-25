@@ -2,6 +2,7 @@
 /*
 !/roleplay_app
 !/.gitignore
+!/README.md
 
 # Build/runtime artifacts inside roleplay_app that shouldn't be committed
 roleplay_app/frontend/node_modules/
@@ -9,3 +10,9 @@ roleplay_app/frontend/dist/
 roleplay_app/backend/__pycache__/
 roleplay_app/backend/**/__pycache__/
 roleplay_app/backend/data/
+
+# Character cards kept local-only, not for GitHub
+roleplay_app/backend/characters/ursula.json
+roleplay_app/backend/characters/kiara.json
+roleplay_app/frontend/public/portraits/ursula.png
+roleplay_app/frontend/public/portraits/kiara.png
