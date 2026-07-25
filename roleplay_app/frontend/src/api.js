@@ -45,7 +45,7 @@ export const commentOnFeedPost = (postId, content) => json("POST", `/api/feed/po
 export async function uploadAvatar(name, blob) {
   const body = new FormData();
   body.append("name", name);
-  body.append("file", blob, "avatar.png");
+  body.append("file", blob, "avatar.jpg");
   const res = await fetch(`${API_BASE}/api/avatar`, { method: "POST", body });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));

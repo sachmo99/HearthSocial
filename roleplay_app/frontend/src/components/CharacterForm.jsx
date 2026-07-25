@@ -22,6 +22,7 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
   const [avatarBlob, setAvatarBlob] = useState(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(null);
   const [existingAvatarFailed, setExistingAvatarFailed] = useState(false);
+  const [avatarError, setAvatarError] = useState(null);
 
   const update = (field) => (e) => {
     const value = e.target.type === "range" ? Number(e.target.value) : e.target.value;
@@ -32,6 +33,11 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
     const file = e.target.files[0];
     e.target.value = "";
     if (!file) return;
+    if (file.type !== "image/jpeg" && file.type !== "image/png") {
+      setAvatarError("Avatar must be a JPG or PNG image");
+      return;
+    }
+    setAvatarError(null);
     const reader = new FileReader();
     reader.onload = () => setCropSrc(reader.result);
     reader.readAsDataURL(file);
@@ -67,7 +73,8 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
           ) : (
             <div className="avatar-picker-placeholder">No avatar yet</div>
           )}
-          <input type="file" accept="image/*" onChange={pickAvatarFile} />
+          <input type="file" accept="image/png,image/jpeg" onChange={pickAvatarFile} />
+          {avatarError && <div className="avatar-picker-error">{avatarError}</div>}
         </div>
       </label>
       <label>

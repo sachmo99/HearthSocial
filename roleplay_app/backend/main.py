@@ -270,7 +270,16 @@ async def health_check():
 @app.get("/api/characters")
 def list_characters():
     conn = db.get_db()
-    rows = conn.execute("SELECT id, name, file_path FROM characters ORDER BY name").fetchall()
+    rows = conn.execute(
+        """
+        SELECT c.id, c.name, c.file_path, COUNT(m.id) AS message_count
+        FROM characters c
+        LEFT JOIN sessions s ON s.character_id = c.id
+        LEFT JOIN messages m ON m.session_id = s.id
+        GROUP BY c.id
+        ORDER BY c.name
+        """
+    ).fetchall()
     result = []
     for r in rows:
         card = json.loads(Path(r["file_path"]).read_text(encoding="utf-8"))
@@ -282,6 +291,7 @@ def list_characters():
             "name": r["name"],
             "persona": card.get("persona", ""),
             "relationship_stage": state.get("relationship_stage", "stranger"),
+            "message_count": r["message_count"],
         })
     return result
 
@@ -378,10 +388,14 @@ def delete_character(character_id: str):
     return {"ok": True}
 
 
+AVATAR_EXTENSIONS = {"image/png": "png", "image/jpeg": "jpg"}
+
+
 @app.post("/api/avatar")
 async def upload_avatar(name: str = Form(...), file: UploadFile = File(...)):
-    if file.content_type != "image/png":
-        raise HTTPException(status_code=400, detail="avatar must be a PNG image")
+    ext = AVATAR_EXTENSIONS.get(file.content_type)
+    if not ext:
+        raise HTTPException(status_code=400, detail="avatar must be a PNG or JPEG image")
     data = await file.read()
     if len(data) > MAX_AVATAR_BYTES:
         raise HTTPException(status_code=400, detail="image too large")
@@ -389,7 +403,7 @@ async def upload_avatar(name: str = Form(...), file: UploadFile = File(...)):
     if not slug:
         raise HTTPException(status_code=400, detail="invalid character name")
     config.PORTRAITS_DIR.mkdir(parents=True, exist_ok=True)
-    (config.PORTRAITS_DIR / f"{slug}.png").write_bytes(data)
+    (config.PORTRAITS_DIR / f"{slug}.{ext}").write_bytes(data)
     return {"ok": True}
 
 
@@ -742,10 +756,19 @@ async def regenerate(session_id: str, body: RegenerateIn):
     return _stream_assistant_reply(conn, session_id, messages, sampling_params)
 
 
-# Serve portraits directly from disk so newly added/uploaded avatars show up
-# without requiring a frontend rebuild (upload_avatar writes here at runtime).
-config.PORTRAITS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/portraits", StaticFiles(directory=config.PORTRAITS_DIR), name="portraits")
+PORTRAIT_EXTENSIONS = ("jpg", "jpeg", "png", "webp")
+
+
+# Resolve a character's portrait by name alone, regardless of which extension it was
+# saved with, and serve it straight from disk (no frontend rebuild needed for new
+# or uploaded avatars - upload_avatar writes here at runtime).
+@app.get("/portraits/{slug}")
+def get_portrait(slug: str):
+    for ext in PORTRAIT_EXTENSIONS:
+        path = config.PORTRAITS_DIR / f"{slug}.{ext}"
+        if path.is_file():
+            return FileResponse(path)
+    raise HTTPException(status_code=404, detail="portrait not found")
 
 # Serve built frontend static files
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"

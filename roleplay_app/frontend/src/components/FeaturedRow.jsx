@@ -23,7 +23,9 @@ function FeaturedPortrait({ name }) {
 
 export default function FeaturedRow({ characters, onSelect }) {
   const stages = useStages();
-  const featured = characters.slice(0, 3);
+  const featured = [...characters]
+    .sort((a, b) => (b.message_count ?? 0) - (a.message_count ?? 0))
+    .slice(0, 3);
   if (featured.length === 0) return null;
 
   return (

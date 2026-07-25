@@ -3,10 +3,11 @@ import Cropper from "react-easy-crop";
 import Modal from "./Modal";
 
 // Fixed output size regardless of source resolution - the largest this ever renders
-// in the UI is a 112px portrait card, so 500x667 (matching the 3:4 crop aspect) is
-// generous headroom even at 3x pixel density, and keeps uploads small on mobile.
+// in the UI is a 112px portrait card, so 500x500 (matching the 1:1 crop aspect and
+// display CSS) is generous headroom even at 3x pixel density, and keeps uploads small
+// on mobile.
 const OUTPUT_WIDTH = 500;
-const OUTPUT_HEIGHT = 667;
+const OUTPUT_HEIGHT = 500;
 
 async function getCroppedBlob(imageSrc, cropPixels) {
   const image = await new Promise((resolve, reject) => {
@@ -19,6 +20,10 @@ async function getCroppedBlob(imageSrc, cropPixels) {
   canvas.width = OUTPUT_WIDTH;
   canvas.height = OUTPUT_HEIGHT;
   const ctx = canvas.getContext("2d");
+  // JPEG has no alpha channel; fill white first so any transparent source pixels
+  // don't turn black on export.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
   ctx.drawImage(
     image,
     cropPixels.x,
@@ -30,7 +35,7 @@ async function getCroppedBlob(imageSrc, cropPixels) {
     OUTPUT_WIDTH,
     OUTPUT_HEIGHT
   );
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
 }
 
 export default function AvatarCropModal({ imageSrc, onCancel, onConfirm }) {
@@ -54,7 +59,7 @@ export default function AvatarCropModal({ imageSrc, onCancel, onConfirm }) {
             image={imageSrc}
             crop={crop}
             zoom={zoom}
-            aspect={3 / 4}
+            aspect={1}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={onCropComplete}

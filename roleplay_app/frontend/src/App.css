@@ -366,7 +366,14 @@
 .avatar-picker {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+.avatar-picker-error {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--danger, #d96a5f);
 }
 
 .avatar-picker-preview {

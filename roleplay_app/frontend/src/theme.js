@@ -25,7 +25,7 @@ export function initial(name) {
 
 export function portraitImageSrc(name) {
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  return `/portraits/${slug}.png`;
+  return `/portraits/${slug}`;
 }
 
 export function blurbFromPersona(name, persona) {
