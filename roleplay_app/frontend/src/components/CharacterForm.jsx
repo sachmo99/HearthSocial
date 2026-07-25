@@ -1,8 +1,7 @@
 import { useState } from "react";
 import AvatarCropModal from "./AvatarCropModal";
 import { portraitImageSrc } from "../theme";
-
-const STAGES = ["stranger", "acquaintance", "friend", "confidant", "partner"];
+import { useStages } from "../useStages";
 
 const DEFAULT_FORM = {
   name: "",
@@ -17,6 +16,7 @@ const DEFAULT_FORM = {
 };
 
 export default function CharacterForm({ initial, onSubmit, onCancel }) {
+  const stages = useStages();
   const [form, setForm] = useState(initial || DEFAULT_FORM);
   const [cropSrc, setCropSrc] = useState(null);
   const [avatarBlob, setAvatarBlob] = useState(null);
@@ -123,9 +123,9 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
       <label>
         Starting relationship stage
         <select value={form.relationship_stage} onChange={update("relationship_stage")}>
-          {STAGES.map((s) => (
-            <option key={s} value={s}>
-              {s}
+          {stages.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
             </option>
           ))}
         </select>

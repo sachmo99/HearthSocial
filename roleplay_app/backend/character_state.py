@@ -1,4 +1,10 @@
+import json
+from pathlib import Path
+
 import config
+
+_STAGES_PATH = Path(__file__).parent / "relationship_stages.json"
+_STAGE_DATA = json.loads(_STAGES_PATH.read_text(encoding="utf-8"))
 
 RESPONSE_STYLE_DIRECTIVE = (
     "[System: Limit replies to 6 sentences max. Internal monologue cannot be more than 2 sentences. Narration should not be more than 2 sentences. Avoid repeating the same words or phrases. Avoid repeating the same ideas. "
@@ -7,6 +13,14 @@ RESPONSE_STYLE_DIRECTIVE = (
     "close the asterisks before the character speaks and reopen a new pair after if the action continues. "
     "Example of correct formatting: *She crosses her arms.* \"You're late again.\" *She turns back to the stove.* "
     "Never break character.]"
+)
+
+
+FEED_POST_STYLE_DIRECTIVE = (
+    "[System: Write a single short social-media-style post in your own voice, 1-3 sentences, plain "
+    "first-person text only - no *action* narration, no (internal monologue) formatting. Keep it "
+    "appropriate for a public post that others in your circle might see - a light reflection on your "
+    "day or mood, not a private or intimate detail. Never break character.]"
 )
 
 
@@ -39,20 +53,16 @@ _STAGE_DIRECTIVES = {
     "taboo": "You are in a taboo relationship; deep intimacy and trust are appropriate, but be mindful of the social consequences.",
 }
 
-VALID_STAGES = tuple(_STAGE_DIRECTIVES.keys())
+VALID_STAGES = tuple(_STAGE_DATA.keys())
 
-# (min_affection, min_closeness) required before the summarizer is allowed to advance INTO this stage.
-# "family" is an alternate, non-romantic framing, so it sits at a lower bar than partner/spouse/taboo.
-_STAGE_THRESHOLDS = {
-    "stranger": (0, 0),
-    "acquaintance": (15, 10),
-    "friend": (35, 25),
-    "confidant": (55, 45),
-    "family": (50, 40),
-    "partner": (70, 55),
-    "taboo": (75, 60),
-    "spouse": (80, 65),
-}
+# (min_affection, min_closeness) required before the summarizer is allowed to advance INTO this stage,
+# read from relationship_stages.json (the single source of truth also used by the /api/stages endpoint
+# for the frontend's stage dropdown and labels).
+_STAGE_THRESHOLDS = {s: (d["min_affection"], d["min_closeness"]) for s, d in _STAGE_DATA.items()}
+
+
+def stage_options() -> list[dict]:
+    return [{"id": s, "label": d["label"]} for s, d in _STAGE_DATA.items()]
 
 
 def stage_rank(stage: str) -> int:

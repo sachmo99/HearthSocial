@@ -2,6 +2,12 @@ import { useCallback, useState } from "react";
 import Cropper from "react-easy-crop";
 import Modal from "./Modal";
 
+// Fixed output size regardless of source resolution - the largest this ever renders
+// in the UI is a 112px portrait card, so 500x667 (matching the 3:4 crop aspect) is
+// generous headroom even at 3x pixel density, and keeps uploads small on mobile.
+const OUTPUT_WIDTH = 500;
+const OUTPUT_HEIGHT = 667;
+
 async function getCroppedBlob(imageSrc, cropPixels) {
   const image = await new Promise((resolve, reject) => {
     const img = new Image();
@@ -10,8 +16,8 @@ async function getCroppedBlob(imageSrc, cropPixels) {
     img.src = imageSrc;
   });
   const canvas = document.createElement("canvas");
-  canvas.width = cropPixels.width;
-  canvas.height = cropPixels.height;
+  canvas.width = OUTPUT_WIDTH;
+  canvas.height = OUTPUT_HEIGHT;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(
     image,
@@ -21,8 +27,8 @@ async function getCroppedBlob(imageSrc, cropPixels) {
     cropPixels.height,
     0,
     0,
-    cropPixels.width,
-    cropPixels.height
+    OUTPUT_WIDTH,
+    OUTPUT_HEIGHT
   );
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }

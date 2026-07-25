@@ -13,6 +13,9 @@ async function json(method, path, body) {
   return res.json();
 }
 
+export const getStages = () => json("GET", "/api/stages");
+export const getHealth = () => json("GET", "/api/health");
+
 export const getCharacters = () => json("GET", "/api/characters");
 export const getCharacter = (id) => json("GET", `/api/characters/${id}`);
 export const createCharacter = (card) => json("POST", "/api/characters", card);
@@ -32,6 +35,12 @@ export const unhideCharacter = (id, pin) => json("POST", `/api/hidden/characters
 export const hideSession = (sessionId) => json("POST", `/api/sessions/${sessionId}/hide`);
 export const listHiddenSessions = (characterId) => json("GET", `/api/hidden/sessions/${characterId}`);
 export const unhideSession = (sessionId, pin) => json("POST", `/api/hidden/sessions/${sessionId}/unhide`, { pin });
+
+export const getFeed = () => json("GET", "/api/feed");
+export const createFeedPost = (characterId) => json("POST", "/api/feed/posts", { character_id: characterId });
+export const reactToFeedPost = (postId, characterId) =>
+  json("POST", `/api/feed/posts/${postId}/react`, { character_id: characterId });
+export const commentOnFeedPost = (postId, content) => json("POST", `/api/feed/posts/${postId}/comments`, { content });
 
 export async function uploadAvatar(name, blob) {
   const body = new FormData();

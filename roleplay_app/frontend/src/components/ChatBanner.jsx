@@ -1,6 +1,6 @@
 import { portraitStyle } from "../theme";
 
-export default function ChatBanner({ character, onOpenSettings, onClear, onToggleHistory }) {
+export default function ChatBanner({ character, onOpenSettings, onClear, onToggleHistory, onDownload }) {
   return (
     <div className="chat-banner" style={portraitStyle(character.name)}>
       <div className="chat-banner-overlay">
@@ -8,6 +8,9 @@ export default function ChatBanner({ character, onOpenSettings, onClear, onToggl
         <div className="chat-banner-actions">
           <button className="banner-icon-button" onClick={onToggleHistory} title="Past conversations" aria-label="Past conversations">
             ☰
+          </button>
+          <button className="banner-icon-button" onClick={onDownload} title="Download conversation" aria-label="Download conversation">
+            ⬇
           </button>
           <button className="banner-icon-button" onClick={onOpenSettings} title="Response parameters" aria-label="Response parameters">
             ⚙

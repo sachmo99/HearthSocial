@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { portraitStyle, portraitImageSrc, stageLabel, blurbFromPersona, initial } from "../theme";
+import { portraitStyle, portraitImageSrc, blurbFromPersona, initial } from "../theme";
+import { useStages, stageLabel } from "../useStages";
 
 function FeaturedPortrait({ name }) {
   const [failed, setFailed] = useState(false);
@@ -21,6 +22,7 @@ function FeaturedPortrait({ name }) {
 }
 
 export default function FeaturedRow({ characters, onSelect }) {
+  const stages = useStages();
   const featured = characters.slice(0, 3);
   if (featured.length === 0) return null;
 
@@ -40,7 +42,7 @@ export default function FeaturedRow({ characters, onSelect }) {
             <div className="featured-info">
               <div className="featured-info-top">
                 <span className="featured-name">{c.name}</span>
-                <span className="featured-stage-badge">{stageLabel(c.relationship_stage)}</span>
+                <span className="featured-stage-badge">{stageLabel(stages, c.relationship_stage)}</span>
               </div>
               <p className="featured-blurb">{blurbFromPersona(c.name, c.persona)}</p>
             </div>

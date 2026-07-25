@@ -1,6 +1,7 @@
-import { stageLabel } from "../theme";
+import { useStages, stageLabel } from "../useStages";
 
 export default function ChatStatsBar({ state }) {
+  const stages = useStages();
   return (
     <div className="chat-stats-bar">
       <span className="stat" title="Affection">
@@ -23,7 +24,7 @@ export default function ChatStatsBar({ state }) {
         </span>
       )}
       <span className="stat stage-badge" title="Relationship stage">
-        {stageLabel(state.relationship_stage)}
+        {stageLabel(stages, state.relationship_stage)}
       </span>
     </div>
   );

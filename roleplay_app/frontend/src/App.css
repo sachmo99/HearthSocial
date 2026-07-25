@@ -1206,6 +1206,63 @@
   text-align: center;
 }
 
+/* --- Health indicator --- */
+
+.health-indicator {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  font-size: 0.72em;
+  color: var(--text-dim);
+  z-index: 1000;
+  box-shadow: var(--shadow);
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-unknown .health-dot {
+  background: var(--text-faint);
+}
+
+.health-online .health-dot {
+  background: #4ade80;
+  animation: health-pulse 2s ease-in-out infinite;
+}
+
+.health-offline .health-dot {
+  background: #f87171;
+  animation: health-blink 1s step-start infinite;
+}
+
+@keyframes health-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0);
+  }
+}
+
+@keyframes health-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
 /* --- Range sliders (temperature/top_p/top_k/min_p, affection/closeness) --- */
 
 input[type="range"] {
@@ -1254,4 +1311,261 @@ input[type="range"]::-moz-range-thumb {
   background: var(--accent-light);
   box-shadow: 0 0 0 3px var(--bg-panel);
   cursor: pointer;
+}
+
+/* --- Feed (design doc 7a: public feed, Firelight palette) --- */
+
+.hero-feed-link {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-light);
+}
+
+.hero-feed-link:hover {
+  color: var(--accent);
+}
+
+.app-feed {
+  max-width: 600px;
+}
+
+.feed-nav {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.feed-wordmark {
+  font-family: var(--serif);
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: var(--banner-text-dim);
+}
+
+.feed-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.feed-composer select {
+  flex: 1;
+  border-radius: 20px;
+  background: var(--bg-panel-2);
+}
+
+.feed-composer button {
+  padding: 9px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.feed-composer button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.feed-error {
+  color: var(--danger, #d96a5f);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.feed-empty {
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feed-post-card {
+  background: var(--bg-panel-3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 18px 22px;
+}
+
+.feed-post-card-pending {
+  border-style: dashed;
+  border-color: var(--accent-soft);
+}
+
+.feed-post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.feed-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: var(--bg-panel-2);
+}
+
+.feed-avatar-fallback,
+.feed-avatar-user {
+  color: var(--banner-text);
+}
+
+.feed-post-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-post-header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.feed-post-author {
+  font-family: var(--serif);
+  font-size: 16px;
+  color: var(--banner-text);
+}
+
+.feed-stage-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-light);
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+.feed-post-time {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.feed-post-content {
+  font-family: var(--serif-body);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.feed-post-meta {
+  display: flex;
+  gap: 22px;
+  margin-bottom: 12px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.feed-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.feed-comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.feed-comment .feed-avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.feed-comment-author {
+  font-weight: 600;
+  color: var(--banner-text);
+}
+
+.feed-comment-pending .feed-comment-author {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.feed-comment-content {
+  color: var(--text-dim);
+}
+
+.feed-post-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.feed-post-actions select {
+  flex: 1;
+}
+
+.feed-post-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel-2);
+  cursor: pointer;
+}
+
+.feed-post-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.feed-comment-form {
+  display: flex;
+  gap: 8px;
+}
+
+.feed-comment-form input {
+  flex: 1;
+  border-radius: 20px;
+}
+
+.feed-comment-form button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  cursor: pointer;
+}
+
+.feed-comment-form button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

@@ -53,6 +53,17 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     return () => clearInterval(interval);
   }, [sessionId, viewing]);
 
+  const showError = (message) => {
+    setMessages((prev) => {
+      const next = [...prev];
+      const last = next[next.length - 1];
+      if (last && last.role === "assistant" && !last.content) {
+        next[next.length - 1] = { ...last, content: `[${message}]` };
+      }
+      return next;
+    });
+  };
+
   const consumeStream = async (streamGenerator) => {
     for await (const chunk of streamGenerator) {
       setMessages((prev) => {
@@ -85,7 +96,8 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     try {
       await consumeStream(streamChat(sessionId, messageToSend, note, overrides, controller.signal));
     } catch (err) {
-      if (err.name !== "AbortError") throw err;
+      if (err.name === "AbortError") return;
+      showError(err.message || "Something went wrong.");
     } finally {
       setSending(false);
       refreshState();
@@ -106,7 +118,8 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     try {
       await consumeStream(regenerateResponse(sessionId, overrides, controller.signal));
     } catch (err) {
-      if (err.name !== "AbortError") throw err;
+      if (err.name === "AbortError") return;
+      showError(err.message || "Something went wrong.");
     } finally {
       setSending(false);
       refreshState();
@@ -116,6 +129,22 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
   const handleClear = async () => {
     await clearChat(character.id);
     onSessionReset();
+  };
+
+  const handleDownload = () => {
+    const lines = messages.map((m) => {
+      if (m.role === "hidden_trigger") return `[Director's note: ${m.content}]`;
+      const label = m.role === "user" ? "You" : character.name;
+      return `${label}: ${m.content}`;
+    });
+    const header = `Conversation with ${character.name}\nExported ${new Date().toLocaleString()}\n\n`;
+    const blob = new Blob([header + lines.join("\n\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${character.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-conversation.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleViewSession = async (id) => {
@@ -145,6 +174,7 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
           onOpenSettings={() => setShowSettings(true)}
           onClear={handleClear}
           onToggleHistory={() => setHistoryOpen((v) => !v)}
+          onDownload={handleDownload}
         />
       )}
 

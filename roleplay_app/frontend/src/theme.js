@@ -28,20 +28,6 @@ export function portraitImageSrc(name) {
   return `/portraits/${slug}.png`;
 }
 
-const STAGE_LABELS = {
-  stranger: "Stranger",
-  acquaintance: "Acquaintance",
-  friend: "Friend",
-  confidant: "Confidant",
-  partner: "Partner",
-  spouse: "Spouse",
-  family: "Family",
-};
-
-export function stageLabel(stage) {
-  return STAGE_LABELS[stage] || stage;
-}
-
 export function blurbFromPersona(name, persona) {
   if (!persona) return "";
   const stripped = persona.replace(new RegExp(`^You are ${name},?\\s*`, "i"), "");

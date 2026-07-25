@@ -49,6 +49,19 @@ CREATE VIRTUAL TABLE IF NOT EXISTS message_vectors USING vec0(
   session_id TEXT,
   embedding FLOAT[{config.EMBEDDING_DIM}]
 );
+
+CREATE TABLE IF NOT EXISTS feed_posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  character_id TEXT REFERENCES characters(id),
+  parent_id INTEGER REFERENCES feed_posts(id),
+  author_type TEXT NOT NULL CHECK(author_type IN ('character','user')),
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  CHECK((author_type='character' AND character_id IS NOT NULL) OR (author_type='user' AND character_id IS NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_feed_posts_character ON feed_posts(character_id);
+CREATE INDEX IF NOT EXISTS idx_feed_posts_parent ON feed_posts(parent_id);
+CREATE INDEX IF NOT EXISTS idx_feed_posts_created ON feed_posts(created_at);
 """
 
 _conn: sqlite3.Connection | None = None
