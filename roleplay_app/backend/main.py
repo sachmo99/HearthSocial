@@ -742,6 +742,11 @@ async def regenerate(session_id: str, body: RegenerateIn):
     return _stream_assistant_reply(conn, session_id, messages, sampling_params)
 
 
+# Serve portraits directly from disk so newly added/uploaded avatars show up
+# without requiring a frontend rebuild (upload_avatar writes here at runtime).
+config.PORTRAITS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/portraits", StaticFiles(directory=config.PORTRAITS_DIR), name="portraits")
+
 # Serve built frontend static files
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
