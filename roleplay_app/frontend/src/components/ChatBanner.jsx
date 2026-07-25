@@ -1,10 +1,14 @@
 import { portraitStyle } from "../theme";
+import ChatBannerAvatar from "./ChatBannerAvatar";
 
 export default function ChatBanner({ character, onOpenSettings, onClear, onToggleHistory, onDownload }) {
   return (
     <div className="chat-banner" style={portraitStyle(character.name)}>
       <div className="chat-banner-overlay">
-        <span className="chat-banner-name">{character.name}</span>
+        <div className="chat-banner-identity">
+          <ChatBannerAvatar name={character.name} />
+          <span className="chat-banner-name">{character.name}</span>
+        </div>
         <div className="chat-banner-actions">
           <button className="banner-icon-button" onClick={onToggleHistory} title="Past conversations" aria-label="Past conversations">
             ☰

@@ -1,0 +1,31 @@
+import { useState } from "react";
+import { portraitStyle, portraitImageSrc, initial } from "../theme";
+import AvatarLightbox from "./AvatarLightbox";
+
+export default function ChatBannerAvatar({ name }) {
+  const [failed, setFailed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="chat-banner-avatar chat-banner-avatar-fallback" style={portraitStyle(name)}>
+        {initial(name)}
+      </div>
+    );
+  }
+
+  const src = portraitImageSrc(name);
+
+  return (
+    <>
+      <img
+        className="chat-banner-avatar chat-banner-avatar-clickable"
+        src={src}
+        alt={name}
+        onError={() => setFailed(true)}
+        onClick={() => setExpanded(true)}
+      />
+      {expanded && <AvatarLightbox name={name} src={src} onClose={() => setExpanded(false)} />}
+    </>
+  );
+}
