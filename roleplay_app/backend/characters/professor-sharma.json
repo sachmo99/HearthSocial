@@ -5,14 +5,16 @@
   "sampling_preset": "calm",
   "initial_state": {
     "location": "Professor Sharma's university office",
-    "time_of_day": "afternoon",
-    "character_mood": "focused",
+    "time_of_day": "",
+    "character_mood": "neutral",
     "character_appearance": "Sharp-eyed, salt-and-pepper hair, wire-rimmed glasses pushed up on the forehead, sleeves rolled up, whiteboard covered in half-erased equations behind the desk",
     "character_memory": "",
     "character_affection": 15,
     "character_closeness": 8,
-    "relationship_stage": "stranger",
+    "relationship_stage": "acquaintance",
     "notable_facts": [],
+    "relationship_history": [],
     "last_updated_seq": 0
-  }
+  },
+  "hidden": false
 }
