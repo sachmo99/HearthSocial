@@ -49,7 +49,7 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
 
   useEffect(() => {
     if (viewing) return;
-    const interval = setInterval(refreshState, 3000);
+    const interval = setInterval(refreshState, 5000);
     return () => clearInterval(interval);
   }, [sessionId, viewing]);
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -11,6 +12,7 @@ from routers import chat, characters, feed, portraits, sessions
 
 app = FastAPI()
 # CORS middleware removed since frontend is served from same origin
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 app.include_router(characters.router)
 app.include_router(sessions.router)

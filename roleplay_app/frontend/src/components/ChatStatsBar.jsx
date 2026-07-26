@@ -1,4 +1,38 @@
+import { useEffect, useRef, useState } from "react";
 import { useStages, stageLabel } from "../useStages";
+
+function MoodStat({ mood }) {
+  const windowRef = useRef(null);
+  const measureRef = useRef(null);
+  const [marquee, setMarquee] = useState(false);
+  const label = mood || "—";
+
+  useEffect(() => {
+    const windowEl = windowRef.current;
+    const measureEl = measureRef.current;
+    if (!windowEl || !measureEl) return;
+    setMarquee(measureEl.scrollWidth > windowEl.clientWidth);
+  }, [label]);
+
+  return (
+    <span className="stat stat-mood" title={mood || "Mood"}>
+      🎭 Mood:
+      <span className="stat-mood-window" ref={windowRef}>
+        <span className="stat-mood-measure" ref={measureRef} aria-hidden="true">
+          {label}
+        </span>
+        <span className={`stat-mood-track${marquee ? " stat-mood-track-marquee" : ""}`}>
+          <span className="stat-mood-text">{label}</span>
+          {marquee && (
+            <span className="stat-mood-text" aria-hidden="true">
+              {label}
+            </span>
+          )}
+        </span>
+      </span>
+    </span>
+  );
+}
 
 export default function ChatStatsBar({ state }) {
   const stages = useStages();
@@ -10,9 +44,7 @@ export default function ChatStatsBar({ state }) {
       <span className="stat" title="Closeness">
         🤝 {state.character_closeness}
       </span>
-      <span className="stat stat-mood" title={state.character_mood || "Mood"}>
-        🎭 Mood: {state.character_mood || "—"}
-      </span>
+      <MoodStat mood={state.character_mood} />
       {typeof state.messages_until_summary === "number" && (
         <span className="stat" title="Messages until the next memory summary update">
           📝 {state.messages_until_summary}

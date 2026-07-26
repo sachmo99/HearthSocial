@@ -10,8 +10,8 @@
   "theme_color": "#e8934a",
   "icons": [
     {
-      "src": "/hearth-social-logo.png",
-      "sizes": "2048x2048",
+      "src": "/hearth-social-icon-512.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]

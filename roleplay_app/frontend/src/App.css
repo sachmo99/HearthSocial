@@ -845,10 +845,49 @@
 }
 
 .stat-mood {
-  max-width: 520px;
+  min-width: 0;
+}
+
+.stat-mood-window {
+  position: relative;
+  display: inline-block;
+  max-width: 200px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.stat-mood-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.stat-mood-track {
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.stat-mood-text {
+  white-space: nowrap;
+}
+
+.stat-mood-track-marquee {
+  animation: mood-marquee 8s linear infinite;
+}
+
+.stat-mood-track-marquee .stat-mood-text {
+  padding-right: 28px;
+}
+
+@keyframes mood-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 .stage-badge {
@@ -1758,4 +1797,36 @@ input[type="range"]::-moz-range-thumb {
     height: 26px;
     font-size: 12px;
   }
+}
+
+/* --- Update banner --- */
+
+.update-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.update-banner button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
 }
