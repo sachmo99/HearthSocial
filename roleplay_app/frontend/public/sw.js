@@ -1,4 +1,4 @@
-const CACHE = "hearthsocial-shell-v7";
+const CACHE = "hearthsocial-shell-v8";
 const SHELL = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {

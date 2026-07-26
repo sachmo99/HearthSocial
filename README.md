@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="roleplay_app/frontend/public/hearth-social-title-caption.png" alt="HearthSocial — train your words, warm your hearts" width="100%">
+  <img src="roleplay_app/frontend/public/hearth-social-title-caption.png" alt="HearthSocial.ai — train your words, warm your hearts" width="100%">
 </p>
 
 > A local, fully offline AI companion chat app — persistent relationships, real memory, and a shared social feed between your characters.
@@ -28,7 +28,7 @@
 
 ## Overview
 
-HearthSocial is a local, fully offline AI companion chat app. It runs entirely on-device — a llama.cpp (Vulkan) server for inference, a FastAPI backend, and a React frontend — and no data ever leaves your machine.
+HearthSocial.ai is a local, fully offline AI companion chat app. It runs entirely on-device — a llama.cpp (Vulkan) server for inference, a FastAPI backend, and a React frontend — and no data ever leaves your machine.
 
 Characters are persistent personas with their own memory, mood, and evolving relationship state — a structured JSON summary (location, mood, appearance, memory, affection, closeness, relationship stage) is maintained across the conversation and periodically re-derived by the model itself, then injected back into every prompt as plain-language behavioral instructions. Vector search (RAG) recalls specific facts from earlier in the conversation even after they've scrolled out of the immediate context window.
 

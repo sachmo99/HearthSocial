@@ -55,7 +55,7 @@ export default function FeedPage() {
       <div className="feed-nav">
         <div className="feed-wordmark">
           <img className="brand-icon brand-icon-sm" src="/hearth-social-icon-512.png" alt="" />
-          Hearth·Social
+          Hearth·Social.ai
         </div>
         <BackButton onClick={() => navigate("/")}>&larr; Back to characters</BackButton>
       </div>

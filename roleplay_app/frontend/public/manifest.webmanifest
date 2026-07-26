@@ -1,6 +1,6 @@
 {
-  "name": "HearthSocial",
-  "short_name": "HearthSocial",
+  "name": "HearthSocial.ai",
+  "short_name": "HearthSocial.ai",
   "description": "A local, fully offline AI companion chat app.",
   "start_url": ".",
   "scope": ".",

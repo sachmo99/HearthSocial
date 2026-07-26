@@ -6,7 +6,7 @@ export default function Hero() {
       <div className="hero-glow" />
       <div className="hero-wordmark">
         <img className="brand-icon" src="/hearth-social-icon-512.png" alt="" />
-        Hearth·Social
+        Hearth·Social.ai
       </div>
       <h2 className="hero-kicker">Role-Play</h2>
       <div className="hero-body">
