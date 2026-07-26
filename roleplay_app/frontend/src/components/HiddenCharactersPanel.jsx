@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { listHiddenCharacters, unhideCharacter } from "../api";
 import PinModal from "./PinModal";
 
-export default function HiddenCharactersPanel({ onUnhidden }) {
+export default function HiddenCharactersPanel({ onUnhidden, refreshKey }) {
   const [hidden, setHidden] = useState([]);
   const [expanded, setExpanded] = useState(false);
   const [unlocking, setUnlocking] = useState(null);
@@ -11,7 +11,7 @@ export default function HiddenCharactersPanel({ onUnhidden }) {
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refreshKey]);
 
   if (hidden.length === 0) return null;
 

@@ -3,6 +3,7 @@ const API_BASE = "";
 async function json(method, path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
+    cache: "no-store",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });

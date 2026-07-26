@@ -13,6 +13,7 @@ export default function HomePage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editInitial, setEditInitial] = useState(null);
+  const [hiddenRefreshKey, setHiddenRefreshKey] = useState(0);
   const navigate = useNavigate();
 
   const refresh = () => getCharacters().then(setCharacters);
@@ -54,6 +55,7 @@ export default function HomePage() {
   const handleHideCharacter = async (character) => {
     await hideCharacter(character.id);
     refresh();
+    setHiddenRefreshKey((k) => k + 1);
   };
 
   return (
@@ -67,7 +69,7 @@ export default function HomePage() {
         onEdit={handleEdit}
         onHide={handleHideCharacter}
       />
-      <HiddenCharactersPanel onUnhidden={refresh} />
+      <HiddenCharactersPanel onUnhidden={refresh} refreshKey={hiddenRefreshKey} />
       {showForm && (
         <Modal>
           <CharacterForm initial={editInitial} onSubmit={handleSubmitForm} onCancel={() => setShowForm(false)} />

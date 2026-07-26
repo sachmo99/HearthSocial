@@ -158,6 +158,7 @@ Key knobs live in `roleplay_app/backend/config.py`:
 
 | Setting | Current value | Meaning |
 |---|---|---|
+| `LLAMA_SERVER_URL` | `http://127.0.0.1:8080` | Where llama-server is running. Override at launch: `ROLEPLAY_LLAMA_URL=http://192.168.1.5:8080` set before starting uvicorn - for a llama-server on a different host/port |
 | `CONTEXT_WINDOW_TOKENS` | 16384 | Must match llama-server's `-c` |
 | `GENERATION_HEADROOM_TOKENS` | 1024 | Reserved for the reply, subtracted from the prompt budget |
 | `RECENT_MESSAGE_CAP` | 20 | Max raw messages kept verbatim in the prompt |

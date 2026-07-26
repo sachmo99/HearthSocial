@@ -7,7 +7,9 @@ DATA_DIR = BACKEND_DIR / "data"
 DB_PATH = DATA_DIR / "app.db"
 PORTRAITS_DIR = BACKEND_DIR.parent / "frontend" / "public" / "portraits"
 
-LLAMA_SERVER_URL = "http://127.0.0.1:8080"
+# Static default; override at server bootup with, e.g., ROLEPLAY_LLAMA_URL=http://192.168.1.5:8080
+# set before starting uvicorn - for pointing at a llama-server running on a different host/port.
+LLAMA_SERVER_URL = os.environ.get("ROLEPLAY_LLAMA_URL", "http://127.0.0.1:8080")
 
 CONTEXT_WINDOW_TOKENS = 16384
 GENERATION_HEADROOM_TOKENS = 1024

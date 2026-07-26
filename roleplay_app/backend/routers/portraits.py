@@ -16,5 +16,7 @@ def get_portrait(slug: str):
     for ext in PORTRAIT_EXTENSIONS:
         path = config.PORTRAITS_DIR / f"{slug}.{ext}"
         if path.is_file():
-            return FileResponse(path)
+            # Portraits can be replaced at runtime (re-upload) without the filename changing,
+            # so browsers must always revalidate rather than trusting a stale cached copy.
+            return FileResponse(path, headers={"Cache-Control": "no-cache"})
     raise HTTPException(status_code=404, detail="portrait not found")
