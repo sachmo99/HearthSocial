@@ -1,4 +1,4 @@
-export default function AvatarLightbox({ name, src, onClose }) {
+export default function ImageLightbox({ name, src, onClose }) {
   return (
     <div className="avatar-lightbox-overlay" onClick={onClose}>
       <img className="avatar-lightbox-img" src={src} alt={name} />

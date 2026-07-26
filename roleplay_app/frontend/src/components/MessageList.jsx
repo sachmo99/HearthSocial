@@ -3,7 +3,7 @@ import MessageBubble from "./MessageBubble";
 import DirectorNoteDivider from "./DirectorNoteDivider";
 
 const MessageList = forwardRef(function MessageList(
-  { messages, characterName, sending, canRegenerate, onRegenerate },
+  { messages, characterName, sending, canRegenerate, onRegenerate, imageGenEnabled, onImageGenerated },
   bottomRef
 ) {
   return (
@@ -21,6 +21,8 @@ const MessageList = forwardRef(function MessageList(
             isPending={sending && isLast}
             showRegenerate={canRegenerate && isLast && !sending}
             onRegenerate={onRegenerate}
+            imageGenEnabled={imageGenEnabled}
+            onImageGenerated={onImageGenerated}
           />
         );
       })}

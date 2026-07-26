@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { portraitStyle, portraitImageSrc, initial } from "../theme";
-import AvatarLightbox from "./AvatarLightbox";
+import ImageLightbox from "./ImageLightbox";
 
 export default function ChatBannerAvatar({ name }) {
   const [failed, setFailed] = useState(false);
@@ -25,7 +25,7 @@ export default function ChatBannerAvatar({ name }) {
         onError={() => setFailed(true)}
         onClick={() => setExpanded(true)}
       />
-      {expanded && <AvatarLightbox name={name} src={src} onClose={() => setExpanded(false)} />}
+      {expanded && <ImageLightbox name={name} src={src} onClose={() => setExpanded(false)} />}
     </>
   );
 }

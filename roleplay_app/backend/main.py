@@ -6,9 +6,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import db
+import image_client
 import llama_client
+from image_client import ImageGenerationUnavailable
 from llama_client import LlamaServerUnavailable
-from routers import chat, characters, feed, portraits, sessions
+from routers import chat, characters, feed, images, portraits, sessions
 
 app = FastAPI()
 # CORS middleware removed since frontend is served from same origin
@@ -18,6 +20,7 @@ app.include_router(characters.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(feed.router)
+app.include_router(images.router)
 app.include_router(portraits.router)
 
 
@@ -29,6 +32,11 @@ async def llama_unavailable_handler(request: Request, exc: LlamaServerUnavailabl
     )
 
 
+@app.exception_handler(ImageGenerationUnavailable)
+async def image_unavailable_handler(request: Request, exc: ImageGenerationUnavailable):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
 @app.on_event("startup")
 def startup() -> None:
     conn = db.get_db()
@@ -38,7 +46,7 @@ def startup() -> None:
 @app.get("/api/health")
 async def health_check():
     ok = await llama_client.health()
-    return {"llama_server": ok}
+    return {"llama_server": ok, "image_generation": image_client.is_configured()}
 
 
 # Serve built frontend static files

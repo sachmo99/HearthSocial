@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useStages, stageLabel } from "../useStages";
+import { triggerSummarize } from "../api";
 
 function MoodStat({ mood }) {
   const windowRef = useRef(null);
@@ -34,7 +35,32 @@ function MoodStat({ mood }) {
   );
 }
 
-export default function ChatStatsBar({ state }) {
+function SummarizeButton({ sessionId, summarizing, onRefresh }) {
+  const [triggering, setTriggering] = useState(false);
+
+  const handleClick = async () => {
+    setTriggering(true);
+    try {
+      await triggerSummarize(sessionId);
+      await onRefresh();
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  return (
+    <button
+      className="summarize-now-button"
+      onClick={handleClick}
+      disabled={triggering || summarizing}
+      title="Update memory/mood from the conversation so far, without waiting for the next automatic summary - useful before generating an image so it reflects the latest state"
+    >
+      🔄 Update memory
+    </button>
+  );
+}
+
+export default function ChatStatsBar({ state, sessionId, onRefresh }) {
   const stages = useStages();
   return (
     <div className="chat-stats-bar">
@@ -54,6 +80,9 @@ export default function ChatStatsBar({ state }) {
         <span className="stat summarizing-badge" title="Updating memory/mood from recent conversation">
           ✍️ Summarizing…
         </span>
+      )}
+      {sessionId && onRefresh && (
+        <SummarizeButton sessionId={sessionId} summarizing={state.summarizing} onRefresh={onRefresh} />
       )}
       <span className="stat stage-badge" title="Relationship stage">
         {stageLabel(stages, state.relationship_stage)}

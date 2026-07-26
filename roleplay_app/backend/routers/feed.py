@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -55,9 +57,11 @@ def list_feed():
     hidden_ids = shared.hidden_character_ids(conn)
     rows = conn.execute(
         """
-        SELECT f.id, f.character_id, c.name AS character_name, f.parent_id, f.author_type, f.content, f.created_at
+        SELECT f.id, f.character_id, c.name AS character_name, f.parent_id, f.author_type, f.content, f.created_at,
+               gi.file_path AS image_file_path
         FROM feed_posts f
         LEFT JOIN characters c ON c.id = f.character_id
+        LEFT JOIN generated_images gi ON gi.feed_post_id = f.id
         ORDER BY f.created_at
         """
     ).fetchall()
@@ -70,6 +74,7 @@ def list_feed():
             "author_type": r["author_type"],
             "content": r["content"],
             "created_at": r["created_at"],
+            "image_path": f"/generated/{Path(r['image_file_path']).name}" if r["image_file_path"] else None,
         }
         for r in rows
         if r["character_id"] not in hidden_ids

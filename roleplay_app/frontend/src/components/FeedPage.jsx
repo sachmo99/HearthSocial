@@ -4,7 +4,7 @@ import BackButton from "./BackButton";
 import FeedAvatar from "./FeedAvatar";
 import FeedPostCard from "./FeedPostCard";
 import TypingIndicator from "./TypingIndicator";
-import { getCharacters, getFeed, createFeedPost } from "../api";
+import { getCharacters, getFeed, createFeedPost, getHealth } from "../api";
 
 export default function FeedPage() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function FeedPage() {
   const [composerCharacterId, setComposerCharacterId] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+  const [imageGenEnabled, setImageGenEnabled] = useState(false);
 
   const refresh = () => getFeed().then(setPosts);
 
@@ -22,6 +23,7 @@ export default function FeedPage() {
       if (cs.length > 0) setComposerCharacterId(cs[0].id);
     });
     refresh();
+    getHealth().then((h) => setImageGenEnabled(!!h.image_generation)).catch(() => {});
   }, []);
 
   const handleNewPost = async () => {
@@ -102,6 +104,7 @@ export default function FeedPage() {
             comments={(commentsByParent[post.id] || []).sort((a, b) => (a.created_at > b.created_at ? 1 : -1))}
             characters={characters}
             onChanged={refresh}
+            imageGenEnabled={imageGenEnabled}
           />
         ))}
         {topLevel.length === 0 && <p className="feed-empty">No posts yet - write the first one.</p>}

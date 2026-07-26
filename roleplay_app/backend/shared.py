@@ -1,14 +1,31 @@
 import json
+import re
 from pathlib import Path
 
 from fastapi import HTTPException
 from pydantic import BaseModel
 
+import config
 import db
 
 
 class UnhideIn(BaseModel):
     pin: str
+
+
+def avatar_slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+PORTRAIT_EXTENSIONS = ("jpg", "jpeg", "png", "webp")
+
+
+def resolve_portrait_path(slug: str) -> Path | None:
+    for ext in PORTRAIT_EXTENSIONS:
+        path = config.PORTRAITS_DIR / f"{slug}.{ext}"
+        if path.is_file():
+            return path
+    return None
 
 
 def load_character(character_id: str) -> dict:

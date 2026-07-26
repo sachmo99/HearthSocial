@@ -916,6 +916,26 @@
   }
 }
 
+.summarize-now-button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.summarize-now-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.summarize-now-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* --- Chat settings modal --- */
 
 .chat-settings {
@@ -1124,6 +1144,52 @@
 
 .regenerate-button:hover {
   color: var(--accent);
+}
+
+.message-image {
+  display: block;
+  max-width: 260px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-top: 6px;
+}
+
+.message-image-clickable {
+  cursor: zoom-in;
+}
+
+.message-image-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.message-image-button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 10px;
+}
+
+.message-image-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.message-image-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.message-image-error {
+  font-size: 12px;
+  color: var(--user);
 }
 
 .chat-bubble-assistant {
@@ -1634,6 +1700,24 @@ input[type="range"]::-moz-range-thumb {
   font-size: 14.5px;
   line-height: 1.55;
   color: var(--text);
+  margin: 0 0 12px;
+}
+
+.feed-post-image {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin: 0 0 12px;
+}
+
+.feed-post-image-clickable {
+  cursor: zoom-in;
+}
+
+.feed-post-image-action {
   margin: 0 0 12px;
 }
 

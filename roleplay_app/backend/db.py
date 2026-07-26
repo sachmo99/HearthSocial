@@ -62,6 +62,19 @@ CREATE TABLE IF NOT EXISTS feed_posts (
 CREATE INDEX IF NOT EXISTS idx_feed_posts_character ON feed_posts(character_id);
 CREATE INDEX IF NOT EXISTS idx_feed_posts_parent ON feed_posts(parent_id);
 CREATE INDEX IF NOT EXISTS idx_feed_posts_created ON feed_posts(created_at);
+
+CREATE TABLE IF NOT EXISTS generated_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  character_id TEXT NOT NULL REFERENCES characters(id),
+  message_id INTEGER REFERENCES messages(id),
+  feed_post_id INTEGER REFERENCES feed_posts(id),
+  prompt TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  CHECK((message_id IS NOT NULL) OR (feed_post_id IS NOT NULL))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_generated_images_message ON generated_images(message_id) WHERE message_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_generated_images_post ON generated_images(feed_post_id) WHERE feed_post_id IS NOT NULL;
 """
 
 _conn: sqlite3.Connection | None = None

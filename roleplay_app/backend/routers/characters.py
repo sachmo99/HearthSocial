@@ -21,10 +21,6 @@ def _slugify(name: str) -> str:
     return slug or "character"
 
 
-def _avatar_slug(name: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", name.lower())
-
-
 class CharacterIn(BaseModel):
     name: str
     persona: str
@@ -212,7 +208,7 @@ async def upload_avatar(name: str = Form(...), file: UploadFile = File(...)):
     data = await file.read()
     if len(data) > MAX_AVATAR_BYTES:
         raise HTTPException(status_code=400, detail="image too large")
-    slug = _avatar_slug(name)
+    slug = shared.avatar_slug(name)
     if not slug:
         raise HTTPException(status_code=400, detail="invalid character name")
     config.PORTRAITS_DIR.mkdir(parents=True, exist_ok=True)

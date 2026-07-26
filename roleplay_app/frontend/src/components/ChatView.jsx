@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getMessages, getSessionState, streamChat, regenerateResponse, clearChat, listSessions, hideSession } from "../api";
+import { getMessages, getSessionState, getHealth, streamChat, regenerateResponse, clearChat, listSessions, hideSession } from "../api";
 import ChatBanner from "./ChatBanner";
 import PastSessionBanner from "./PastSessionBanner";
 import ChatStatsBar from "./ChatStatsBar";
@@ -20,11 +20,16 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
   const [sessions, setSessions] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [viewing, setViewing] = useState(null);
+  const [imageGenEnabled, setImageGenEnabled] = useState(false);
   const bottomRef = useRef(null);
   const abortControllerRef = useRef(null);
   const stalledRef = useRef(false);
 
   const refreshSessions = () => listSessions(character.id).then(setSessions);
+
+  useEffect(() => {
+    getHealth().then((h) => setImageGenEnabled(!!h.image_generation)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     getMessages(sessionId).then(setMessages);
@@ -127,6 +132,10 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     } finally {
       setSending(false);
       refreshState();
+      // Placeholder messages added optimistically above have no real id yet (only known once
+      // the backend has actually inserted the row) - refetch so the image-generation button has
+      // a real message id to call once the turn is done.
+      getMessages(sessionId).then(setMessages);
     }
   };
 
@@ -153,6 +162,10 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     } finally {
       setSending(false);
       refreshState();
+      // Placeholder messages added optimistically above have no real id yet (only known once
+      // the backend has actually inserted the row) - refetch so the image-generation button has
+      // a real message id to call once the turn is done.
+      getMessages(sessionId).then(setMessages);
     }
   };
 
@@ -188,6 +201,10 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     refreshSessions();
   };
 
+  const handleImageGenerated = (messageId, imagePath) => {
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, image_path: imagePath } : m)));
+  };
+
   const pastSessions = sessions.filter((s) => s.id !== sessionId);
 
   return (
@@ -208,7 +225,11 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
         />
       )}
 
-      {viewing ? <ChatStatsBar state={viewing.state} /> : sessionState && <ChatStatsBar state={sessionState} />}
+      {viewing ? (
+        <ChatStatsBar state={viewing.state} />
+      ) : (
+        sessionState && <ChatStatsBar state={sessionState} sessionId={sessionId} onRefresh={refreshState} />
+      )}
 
       <MessageList
         ref={viewing ? undefined : bottomRef}
@@ -217,6 +238,8 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
         sending={!viewing && sending}
         canRegenerate={!viewing}
         onRegenerate={regenerate}
+        imageGenEnabled={!viewing && imageGenEnabled}
+        onImageGenerated={handleImageGenerated}
       />
 
       {!viewing && (

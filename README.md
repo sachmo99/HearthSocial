@@ -55,11 +55,18 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 - Plain-text comments from you, threaded one level deep under each post.
 - Hiding a character removes their posts/reactions from the feed and blocks new activity from them.
 
+**Scene images (optional, cloud)**
+- Generate a scene image for any assistant chat message or top-level feed post — built from the character's current appearance/location/mood/relationship-stage plus the actual scene content. Provider-swappable (`ROLEPLAY_IMAGE_PROVIDER`); Gemini 3.1 Flash Lite Image ("Nano Banana 2 Lite", default — the cheapest/fastest Gemini image tier, chosen for cost control) and xAI's Grok Imagine are both implemented.
+- Uses the character's existing portrait as a reference image (xAI's image-editing endpoint, not plain text-to-image) so the generated scene keeps a consistent face/likeness instead of a different-looking character each time. Falls back to plain text-to-image if the character has no portrait uploaded yet.
+- The prompt is neutralized through the local model before it's sent to the cloud API by default (toggleable), since the roleplay scenes it's built from can be explicit and the cloud provider won't generate that.
+- Strictly user-triggered (a button per message/post), same as feed generation — nothing generates automatically.
+- The one part of the app that isn't fully offline, and entirely optional: unset `ROLEPLAY_XAI_API_KEY` and the buttons simply don't appear, everything else works exactly as before.
+
 **Interface & controls**
 - A manual "director's note" (🎬 in the chat input) — a one-turn out-of-character nudge to steer the scene (e.g. "someone knocks on the door") without your character saying it; shows up as a distinct divider in the chat log.
 - Hide/unhide for both characters and individual sessions, protected by a PIN.
 - Per-message sampling override popup (temperature/top_p/top_k/min_p) — no server restart needed.
-- Live stats bar (❤️ affection, 🤝 closeness, 🎭 mood, relationship-stage badge) plus a "messages until next summary" counter and a summarizing-in-progress indicator.
+- Live stats bar (❤️ affection, 🤝 closeness, 🎭 mood, relationship-stage badge) plus a "messages until next summary" counter and a summarizing-in-progress indicator, and an "🔄 Update memory" button to trigger a summarization pass on demand rather than waiting for the automatic every-N-message one — useful right before generating a scene image, since the image prompt is built from this same summarized state.
 - Session history: browse and view past (cleared) conversations read-only.
 - Regenerate button to redo the last reply; in-flight generation is properly aborted when you switch characters or clear the chat, so it doesn't keep the single inference slot tied up.
 - Dialogue/action/internal-monologue visually distinguished in the chat, including recovery for models that don't perfectly follow the formatting convention.
@@ -176,6 +183,13 @@ Key knobs live in `roleplay_app/backend/config.py`:
 | `MAX_STAT_DELTA_PER_CYCLE` | 10 | Max points affection/closeness can move in either direction per summarization cycle |
 | `MAX_CHARACTER_MEMORY_CHARS` | 600 | `character_memory` is truncated to this length (at a sentence boundary) after each summarization |
 | `UNHIDE_PIN` | `1234` | PIN required to unhide a hidden character or conversation. Override at launch: `ROLEPLAY_UNHIDE_PIN=5678` set before starting uvicorn |
+| `IMAGE_PROVIDER` | `gemini` | Which image generation backend `image_client.py` dispatches to - `gemini` (Nano Banana) or `xai` are implemented; the selector exists so adding another provider later doesn't require touching any call site. Override: `ROLEPLAY_IMAGE_PROVIDER=...` |
+| `GEMINI_API_KEY` | unset | **Optional** — the only setting in this app that calls out to the internet, when `IMAGE_PROVIDER=gemini`. Set `ROLEPLAY_GEMINI_API_KEY=...` before starting uvicorn to enable image generation; leave unset and the app runs exactly as before, fully offline, with the generate-image buttons simply not shown |
+| `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-lite-image` | "Nano Banana 2 Lite" - the cheapest/fastest Gemini image tier, deliberately chosen over the full model to control cloud costs. Override: `ROLEPLAY_GEMINI_IMAGE_MODEL=...` |
+| `GEMINI_IMAGE_SIZE` | `1K` | Output resolution - `1K` is the only size the Lite model supports (2K/4K aren't available on it), so this is already the cheapest option. Override: `ROLEPLAY_GEMINI_IMAGE_SIZE=...` |
+| `XAI_API_KEY` | unset | Same as `GEMINI_API_KEY` above, but for `IMAGE_PROVIDER=xai` (xAI's Grok Imagine). Set `ROLEPLAY_XAI_API_KEY=xai-...` |
+| `XAI_IMAGE_MODEL` | `grok-imagine-image-quality` | Override at launch: `ROLEPLAY_XAI_IMAGE_MODEL=...` |
+| `IMAGE_MODERATION_ENABLED` | `true` | Cloud image providers generally refuse explicit sexual content, but scene prompts are built from live roleplay chat text, which can be explicit. When enabled, the prompt is rewritten through the local model first to neutralize explicit wording before it reaches the cloud API. Disable: `ROLEPLAY_IMAGE_MODERATION=false` |
 
 ## Known limitations
 

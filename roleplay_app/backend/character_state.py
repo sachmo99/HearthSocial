@@ -89,6 +89,35 @@ def build_behavior_directive(summary: dict) -> str:
     return " ".join(parts)
 
 
+# Rendering style only - mood/atmosphere/expression must stay dynamic (from character_mood and
+# scene_text below), not hardcoded here, so a sad or angry scene doesn't get tagged "erotic" too.
+# The multi-character clause is a fixed compositional rule (not mood/content), so it belongs
+# here too - without it, any other person mentioned in the scene text gets a random, differently
+# inconsistent appearance from the model on every regeneration.
+_IMAGE_STYLE_DIRECTIVE = (
+    "soft anime style lineart illustration, clean delicate linework, soft pastel shading, soft warm lighting, "
+    "detailed yet soft, high quality anime illustration. If other characters appear in the scene, give them the "
+    "same skin tone as the main character described above, for visual consistency"
+)
+
+
+def build_image_prompt(character: dict, state: dict, scene_text: str = "") -> str:
+    parts = [character.get("name", "")]
+    if state.get("character_appearance"):
+        parts.append(state["character_appearance"])
+    if state.get("character_mood"):
+        parts.append(f"{state['character_mood']} expression")
+    if state.get("location"):
+        parts.append(f"in {state['location']}")
+    if scene_text:
+        truncated = scene_text.strip()[:300]
+        last_stop = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
+        clean_scene = truncated[: last_stop + 1] if last_stop > 0 else truncated.rstrip()
+        parts.append(f"Scene: {clean_scene}")
+    parts.append(_IMAGE_STYLE_DIRECTIVE)
+    return ", ".join(p for p in parts if p)
+
+
 def compute_sampling_params(sampling_preset: str, summary: dict) -> dict:
     base = dict(config.SAMPLING_PRESETS.get(sampling_preset, config.SAMPLING_PRESETS["balanced"]))
 

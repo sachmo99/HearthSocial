@@ -30,6 +30,7 @@ export const clearChat = (id) => json("POST", `/api/characters/${id}/clear`);
 export const listSessions = (characterId) => json("GET", `/api/characters/${characterId}/sessions`);
 export const getMessages = (sessionId) => json("GET", `/api/sessions/${sessionId}/messages`);
 export const getSessionState = (sessionId) => json("GET", `/api/sessions/${sessionId}/state`);
+export const triggerSummarize = (sessionId) => json("POST", `/api/sessions/${sessionId}/summarize`);
 export const getSessionDebug = (sessionId) => json("GET", `/api/sessions/${sessionId}/debug`);
 
 export const hideCharacter = (id) => json("POST", `/api/characters/${id}/hide`);
@@ -50,6 +51,16 @@ export const createFeedPost = (characterId) =>
 export const reactToFeedPost = (postId, characterId) =>
   json("POST", `/api/feed/posts/${postId}/react`, { character_id: characterId }, FEED_GENERATION_TIMEOUT_MS);
 export const commentOnFeedPost = (postId, content) => json("POST", `/api/feed/posts/${postId}/comments`, { content });
+
+// Image generation is two sequential server-side calls when moderation is enabled (default):
+// the local-model prompt neutralization (llama_client's 120s default timeout) followed by the
+// actual image API call (image_client.py's 90s timeout) - this needs to cover both, not just one.
+const IMAGE_GENERATION_TIMEOUT_MS = 215000;
+
+export const generateMessageImage = (messageId) =>
+  json("POST", `/api/messages/${messageId}/image`, undefined, IMAGE_GENERATION_TIMEOUT_MS);
+export const generateFeedPostImage = (postId) =>
+  json("POST", `/api/feed/posts/${postId}/image`, undefined, IMAGE_GENERATION_TIMEOUT_MS);
 
 export async function uploadAvatar(name, blob) {
   const body = new FormData();

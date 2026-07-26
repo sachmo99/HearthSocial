@@ -1,5 +1,7 @@
+import asyncio
 import json
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
@@ -200,10 +202,44 @@ def get_session_state(session_id: str):
     }
 
 
+@router.post("/sessions/{session_id}/summarize")
+async def trigger_summarize(session_id: str):
+    # Manual, on-demand trigger - image generation reads character_appearance/location/mood from
+    # the last-summarized state, which can lag behind the live conversation between the
+    # automatic every-N-message summaries. summarizer.run() already no-ops safely if there's
+    # nothing new or a summarization is already in flight, so this is just an explicit poke.
+    conn = db.get_db()
+    row = conn.execute("SELECT last_summarized_seq FROM summaries WHERE session_id = ?", (session_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    latest_seq = conn.execute(
+        "SELECT COALESCE(MAX(seq), 0) AS max_seq FROM messages WHERE session_id = ?", (session_id,)
+    ).fetchone()["max_seq"]
+    has_new_messages = latest_seq > row["last_summarized_seq"]
+    if has_new_messages and session_id not in summarizer.RUNNING:
+        asyncio.create_task(summarizer.run(session_id))
+    return {"ok": True, "started": has_new_messages}
+
+
 @router.get("/sessions/{session_id}/messages")
 def get_messages(session_id: str):
     conn = db.get_db()
     rows = conn.execute(
-        "SELECT role, content, seq FROM messages WHERE session_id = ? AND visible = 1 ORDER BY seq", (session_id,)
+        """
+        SELECT m.id, m.role, m.content, m.seq, gi.file_path AS image_file_path
+        FROM messages m LEFT JOIN generated_images gi ON gi.message_id = m.id
+        WHERE m.session_id = ? AND m.visible = 1
+        ORDER BY m.seq
+        """,
+        (session_id,),
     ).fetchall()
-    return [{"role": r["role"], "content": r["content"], "seq": r["seq"]} for r in rows]
+    return [
+        {
+            "id": r["id"],
+            "role": r["role"],
+            "content": r["content"],
+            "seq": r["seq"],
+            "image_path": f"/generated/{Path(r['image_file_path']).name}" if r["image_file_path"] else None,
+        }
+        for r in rows
+    ]

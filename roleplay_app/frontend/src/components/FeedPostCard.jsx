@@ -1,8 +1,9 @@
 import { useState } from "react";
 import FeedAvatar from "./FeedAvatar";
 import TypingIndicator from "./TypingIndicator";
+import ImageLightbox from "./ImageLightbox";
 import { useStages, stageLabel } from "../useStages";
-import { reactToFeedPost, commentOnFeedPost } from "../api";
+import { reactToFeedPost, commentOnFeedPost, generateFeedPostImage } from "../api";
 
 function timeAgo(iso) {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -14,13 +15,16 @@ function timeAgo(iso) {
   return days === 1 ? "yesterday" : `${days}d ago`;
 }
 
-export default function FeedPostCard({ post, comments, characters, onChanged }) {
+export default function FeedPostCard({ post, comments, characters, onChanged, imageGenEnabled }) {
   const stages = useStages();
   const [reactorId, setReactorId] = useState("");
   const [reacting, setReacting] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commenting, setCommenting] = useState(false);
   const [error, setError] = useState("");
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [imageExpanded, setImageExpanded] = useState(false);
 
   const author = characters.find((c) => c.id === post.character_id);
   const reactorOptions = characters.filter((c) => c.id !== post.character_id);
@@ -37,6 +41,19 @@ export default function FeedPostCard({ post, comments, characters, onChanged }) 
       setError(e.message);
     } finally {
       setReacting(false);
+    }
+  };
+
+  const handleGenerateImage = async () => {
+    setGeneratingImage(true);
+    setImageError("");
+    try {
+      await generateFeedPostImage(post.id);
+      await onChanged();
+    } catch (e) {
+      setImageError(e.message);
+    } finally {
+      setGeneratingImage(false);
     }
   };
 
@@ -69,6 +86,29 @@ export default function FeedPostCard({ post, comments, characters, onChanged }) 
         </div>
       </div>
       <p className="feed-post-content">{post.content}</p>
+
+      {post.image_path && (
+        <details className="chat-reasoning" open>
+          <summary>Generated image</summary>
+          <img
+            className="feed-post-image feed-post-image-clickable"
+            src={post.image_path}
+            alt="Generated scene"
+            onClick={() => setImageExpanded(true)}
+          />
+          {imageExpanded && (
+            <ImageLightbox name="Generated scene" src={post.image_path} onClose={() => setImageExpanded(false)} />
+          )}
+        </details>
+      )}
+      {imageGenEnabled && (
+        <div className="feed-post-image-action">
+          <button className="message-image-button" onClick={handleGenerateImage} disabled={generatingImage}>
+            {generatingImage ? "Generating…" : post.image_path ? "🔄 Regenerate image" : "🖼️ Generate image"}
+          </button>
+          {imageError && <span className="message-image-error">{imageError}</span>}
+        </div>
+      )}
 
       <div className="feed-post-meta">
         <span>💬 {comments.length}</span>
