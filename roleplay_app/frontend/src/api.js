@@ -1,10 +1,10 @@
 const API_BASE = "";
 
-async function json(method, path, body) {
+async function json(method, path, body, timeoutMs = 15000) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     cache: "no-store",
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeoutMs),
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -23,7 +23,9 @@ export const getCharacter = (id) => json("GET", `/api/characters/${id}`);
 export const createCharacter = (card) => json("POST", "/api/characters", card);
 export const updateCharacter = (id, card) => json("PUT", `/api/characters/${id}`, card);
 export const deleteCharacter = (id) => json("DELETE", `/api/characters/${id}`);
-export const startCharacter = (id) => json("POST", `/api/characters/${id}/start`);
+// Generates the opening scene server-side (llama_client's default 120s timeout), so this
+// needs more headroom than a plain CRUD call.
+export const startCharacter = (id) => json("POST", `/api/characters/${id}/start`, undefined, 125000);
 export const clearChat = (id) => json("POST", `/api/characters/${id}/clear`);
 export const listSessions = (characterId) => json("GET", `/api/characters/${characterId}/sessions`);
 export const getMessages = (sessionId) => json("GET", `/api/sessions/${sessionId}/messages`);
@@ -38,10 +40,15 @@ export const hideSession = (sessionId) => json("POST", `/api/sessions/${sessionI
 export const listHiddenSessions = (characterId) => json("GET", `/api/hidden/sessions/${characterId}`);
 export const unhideSession = (sessionId, pin) => json("POST", `/api/hidden/sessions/${sessionId}/unhide`, { pin });
 
+// Post/react generation queues behind any in-flight chat turn on the single inference slot,
+// so these need the same generous timeout as the backend's own llama_client call (300s).
+const FEED_GENERATION_TIMEOUT_MS = 305000;
+
 export const getFeed = () => json("GET", "/api/feed");
-export const createFeedPost = (characterId) => json("POST", "/api/feed/posts", { character_id: characterId });
+export const createFeedPost = (characterId) =>
+  json("POST", "/api/feed/posts", { character_id: characterId }, FEED_GENERATION_TIMEOUT_MS);
 export const reactToFeedPost = (postId, characterId) =>
-  json("POST", `/api/feed/posts/${postId}/react`, { character_id: characterId });
+  json("POST", `/api/feed/posts/${postId}/react`, { character_id: characterId }, FEED_GENERATION_TIMEOUT_MS);
 export const commentOnFeedPost = (postId, content) => json("POST", `/api/feed/posts/${postId}/comments`, { content });
 
 export async function uploadAvatar(name, blob) {
