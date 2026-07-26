@@ -39,7 +39,8 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 ## Features
 
 **Character & memory**
-- Character cards with persona, opening scene, sampling personality, and starting relationship stats — create/edit them directly in the UI, including an optional avatar image (upload + crop).
+- Character cards with persona, opening scene, sampling personality, and starting relationship stats — create/edit them directly in the UI, including an optional avatar image (1:1 crop matching the thumbnail display, PNG/JPEG only, compressed client-side before upload).
+- Portraits are resolved dynamically by character name (both PNG and JPEG supported, never silently converted) — drop a file into `frontend/public/portraits/` or upload through the UI and it shows up immediately, no rebuild needed.
 - Click a character to auto-generate an opening scene in character (via a hidden system trigger you never see).
 - Structured memory: affection, closeness, relationship stage, mood, location, durable facts, and a relationship-history log (why the stage changed, and when), updated by the model every 10 messages (configurable), merged rather than overwritten.
 - RAG-backed recall of specific facts from anywhere earlier in the conversation, scoped per-session, with each recalled fact tagged by how long ago it was said so the model treats it as history rather than current state.
@@ -64,6 +65,12 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 - Dialogue/action/internal-monologue visually distinguished in the chat, including recovery for models that don't perfectly follow the formatting convention.
 - Collapsible debug panel (lazy-loaded) showing the live structured summary state and the exact RAG hits used for the current turn.
 - Firelight visual theme (sapphire-black + amber-orange) with locally-hosted fonts — no external CDN calls, fully offline.
+- Click the chat banner's portrait to view it full-size.
+
+**Installable / mobile**
+- Works as a Progressive Web App — installable to your phone's home screen (iOS Safari's "Add to Home Screen" needs no extra setup; Android/Chrome needs a secure origin, see Known limitations) for a standalone, browser-chrome-free launch.
+- A small "update available" banner appears after a new build is deployed and the installed app has picked it up, since installed PWAs have no address bar to manually reload from.
+- A first responsive breakpoint covers the chat banner and home hero on narrow screens; verified on an actual phone, not just resized desktop windows.
 
 ## Social Feed
 
@@ -176,4 +183,6 @@ Key knobs live in `roleplay_app/backend/config.py`:
 - Local/quantized models won't always perfectly honor formatting or grounding instructions (e.g. occasionally contradicting a recalled fact) — prompting reduces this but doesn't eliminate it.
 - At high affection/deep-intimacy stages, replies can drift into melodramatic/purple prose; a couple of prompt-level fixes were tried and empirically failed to help (see [`PROGRESS.md`](roleplay_app/PROGRESS.md) — Known gaps). The manual director's note is currently the one reliable way to redirect tone in the moment.
 - Creating a *new* character through the UI only offers `stranger` through `partner` as a starting relationship stage — `spouse`/`family`/`taboo` are reachable through play but not selectable as a starting point yet.
-- No mobile-specific CSS breakpoints — layout is fluid enough to likely avoid breaking outright, but hasn't been verified on an actual phone.
+- Mobile layout has one real breakpoint (chat banner + hero) verified on an actual phone; other screens/modals rely on the pre-existing fluid layout and haven't been specifically tuned.
+- PWA install requires a secure context (HTTPS or `localhost`) for the service worker to register in Chrome — a plain-HTTP LAN address won't get the service worker/update-banner/offline-shell features there without extra setup (a Chrome flag, or fronting the app with HTTPS). iOS Safari's "Add to Home Screen" doesn't have this restriction and is the practical path today.
+- The installed PWA has occasionally been reported to freeze or drop its connection; mitigated with request timeouts, stream-stall recovery, and foreground re-sync, but the exact trigger was never conclusively identified — see [`PROGRESS.md`](roleplay_app/PROGRESS.md).

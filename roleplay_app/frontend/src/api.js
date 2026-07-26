@@ -4,6 +4,7 @@ async function json(method, path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     cache: "no-store",
+    signal: AbortSignal.timeout(15000),
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });

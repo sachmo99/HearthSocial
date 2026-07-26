@@ -22,6 +22,7 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
   const [viewing, setViewing] = useState(null);
   const bottomRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const stalledRef = useRef(false);
 
   const refreshSessions = () => listSessions(character.id).then(setSessions);
 
@@ -50,7 +51,14 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
   useEffect(() => {
     if (viewing) return;
     const interval = setInterval(refreshState, 5000);
-    return () => clearInterval(interval);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshState();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [sessionId, viewing]);
 
   const showError = (message) => {
@@ -64,17 +72,31 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     });
   };
 
-  const consumeStream = async (streamGenerator) => {
-    for await (const chunk of streamGenerator) {
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        next[next.length - 1] =
-          chunk.type === "reasoning"
-            ? { ...last, reasoning: (last.reasoning || "") + chunk.delta }
-            : { ...last, content: last.content + chunk.delta };
-        return next;
-      });
+  const consumeStream = async (streamGenerator, controller) => {
+    const stall = () => {
+      stalledRef.current = true;
+      controller.abort();
+    };
+    let stallTimer = setTimeout(stall, 30000);
+    const resetStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(stall, 30000);
+    };
+    try {
+      for await (const chunk of streamGenerator) {
+        resetStallTimer();
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          next[next.length - 1] =
+            chunk.type === "reasoning"
+              ? { ...last, reasoning: (last.reasoning || "") + chunk.delta }
+              : { ...last, content: last.content + chunk.delta };
+          return next;
+        });
+      }
+    } finally {
+      clearTimeout(stallTimer);
     }
   };
 
@@ -94,9 +116,13 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
-      await consumeStream(streamChat(sessionId, messageToSend, note, overrides, controller.signal));
+      await consumeStream(streamChat(sessionId, messageToSend, note, overrides, controller.signal), controller);
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError") {
+        if (stalledRef.current) showError("Connection stalled - try again");
+        stalledRef.current = false;
+        return;
+      }
       showError(err.message || "Something went wrong.");
     } finally {
       setSending(false);
@@ -116,9 +142,13 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
-      await consumeStream(regenerateResponse(sessionId, overrides, controller.signal));
+      await consumeStream(regenerateResponse(sessionId, overrides, controller.signal), controller);
     } catch (err) {
-      if (err.name === "AbortError") return;
+      if (err.name === "AbortError") {
+        if (stalledRef.current) showError("Connection stalled - try again");
+        stalledRef.current = false;
+        return;
+      }
       showError(err.message || "Something went wrong.");
     } finally {
       setSending(false);
