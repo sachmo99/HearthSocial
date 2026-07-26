@@ -57,10 +57,10 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 
 **Scene images (optional, cloud)**
 - Generate a scene image for any assistant chat message or top-level feed post — built from the character's current appearance/location/mood/relationship-stage plus the actual scene content. Provider-swappable (`ROLEPLAY_IMAGE_PROVIDER`); Gemini 3.1 Flash Lite Image ("Nano Banana 2 Lite", default — the cheapest/fastest Gemini image tier, chosen for cost control) and xAI's Grok Imagine are both implemented.
-- Uses the character's existing portrait as a reference image (xAI's image-editing endpoint, not plain text-to-image) so the generated scene keeps a consistent face/likeness instead of a different-looking character each time. Falls back to plain text-to-image if the character has no portrait uploaded yet.
+- Uses the character's existing portrait as a reference image (both providers' image-editing/multimodal path, not plain text-to-image), so the generated scene keeps a consistent face/likeness instead of a different-looking character each time — and is told to take only the face/likeness from it, ignoring the portrait's own background in favor of the scene's actual described location. Falls back to plain text-to-image if the character has no portrait uploaded yet.
 - The prompt is neutralized through the local model before it's sent to the cloud API by default (toggleable), since the roleplay scenes it's built from can be explicit and the cloud provider won't generate that.
-- Strictly user-triggered (a button per message/post), same as feed generation — nothing generates automatically.
-- The one part of the app that isn't fully offline, and entirely optional: unset `ROLEPLAY_XAI_API_KEY` and the buttons simply don't appear, everything else works exactly as before.
+- Strictly user-triggered (a button per message/post, plus a regenerate option once one exists), same as feed generation — nothing generates automatically.
+- The one part of the app that isn't fully offline, and entirely optional: unset `ROLEPLAY_GEMINI_API_KEY` (or `ROLEPLAY_XAI_API_KEY` if using that provider) and the buttons simply don't appear, everything else works exactly as before.
 
 **Interface & controls**
 - A manual "director's note" (🎬 in the chat input) — a one-turn out-of-character nudge to steer the scene (e.g. "someone knocks on the door") without your character saying it; shows up as a distinct divider in the chat log.
@@ -183,7 +183,7 @@ Key knobs live in `roleplay_app/backend/config.py`:
 | `MAX_STAT_DELTA_PER_CYCLE` | 10 | Max points affection/closeness can move in either direction per summarization cycle |
 | `MAX_CHARACTER_MEMORY_CHARS` | 600 | `character_memory` is truncated to this length (at a sentence boundary) after each summarization |
 | `UNHIDE_PIN` | `1234` | PIN required to unhide a hidden character or conversation. Override at launch: `ROLEPLAY_UNHIDE_PIN=5678` set before starting uvicorn |
-| `IMAGE_PROVIDER` | `gemini` | Which image generation backend `image_client.py` dispatches to - `gemini` (Nano Banana) or `xai` are implemented; the selector exists so adding another provider later doesn't require touching any call site. Override: `ROLEPLAY_IMAGE_PROVIDER=...` |
+| `IMAGE_PROVIDER` | `gemini` | Which image generation backend `image_client.py` dispatches to - `gemini` (Nano Banana 2 Lite) or `xai` (Grok Imagine) are implemented; the selector exists so adding another provider later doesn't require touching any call site. Override: `ROLEPLAY_IMAGE_PROVIDER=...` |
 | `GEMINI_API_KEY` | unset | **Optional** — the only setting in this app that calls out to the internet, when `IMAGE_PROVIDER=gemini`. Set `ROLEPLAY_GEMINI_API_KEY=...` before starting uvicorn to enable image generation; leave unset and the app runs exactly as before, fully offline, with the generate-image buttons simply not shown |
 | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-lite-image` | "Nano Banana 2 Lite" - the cheapest/fastest Gemini image tier, deliberately chosen over the full model to control cloud costs. Override: `ROLEPLAY_GEMINI_IMAGE_MODEL=...` |
 | `GEMINI_IMAGE_SIZE` | `1K` | Output resolution - `1K` is the only size the Lite model supports (2K/4K aren't available on it), so this is already the cheapest option. Override: `ROLEPLAY_GEMINI_IMAGE_SIZE=...` |
