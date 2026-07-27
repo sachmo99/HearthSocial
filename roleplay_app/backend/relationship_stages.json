@@ -3,8 +3,8 @@
   "acquaintance": {"label": "Acquaintance", "min_affection": 15, "min_closeness": 10},
   "friend": {"label": "Friend", "min_affection": 35, "min_closeness": 25},
   "confidant": {"label": "Confidant", "min_affection": 55, "min_closeness": 45},
-  "partner": {"label": "Partner", "min_affection": 70, "min_closeness": 55},
-  "spouse": {"label": "Spouse", "min_affection": 80, "min_closeness": 65},
-  "family": {"label": "Family", "min_affection": 50, "min_closeness": 40},
-  "taboo": {"label": "Taboo", "min_affection": 75, "min_closeness": 60}
+  "partner": {"label": "Partner", "min_affection": 80, "min_closeness": 70},
+  "spouse": {"label": "Spouse", "min_affection": 90, "min_closeness": 85},
+  "family": {"label": "Family", "min_affection": 70, "min_closeness": 65},
+  "taboo": {"label": "Taboo", "min_affection": 85, "min_closeness": 80}
 }

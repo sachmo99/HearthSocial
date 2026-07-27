@@ -19,9 +19,12 @@ LLAMA_SERVER_URL = os.environ.get("ROLEPLAY_LLAMA_URL", "http://127.0.0.1:8080")
 # change in image_client.py, not a rewrite of every call site.
 IMAGE_PROVIDER = os.environ.get("ROLEPLAY_IMAGE_PROVIDER", "gemini")
 
-# xai provider config. Empty key means this provider is simply unavailable.
+# xai provider config. Empty key means this provider is simply unavailable. Standard tier
+# ("grok-imagine-image", $0.02/image) deliberately used over "grok-imagine-image-quality"
+# ($0.05/image) to keep cloud costs down, same reasoning as Gemini's lite model + 1K pin below -
+# xAI is already only the fallback path (see routers/images.py), so it doesn't need the pricier tier.
 XAI_API_KEY = os.environ.get("ROLEPLAY_XAI_API_KEY", "")
-XAI_IMAGE_MODEL = os.environ.get("ROLEPLAY_XAI_IMAGE_MODEL", "grok-imagine-image-quality")
+XAI_IMAGE_MODEL = os.environ.get("ROLEPLAY_XAI_IMAGE_MODEL", "grok-imagine-image")
 XAI_IMAGE_URL = "https://api.x.ai/v1/images/generations"
 XAI_IMAGE_EDIT_URL = "https://api.x.ai/v1/images/edits"
 
@@ -58,7 +61,7 @@ RAG_TOP_K = 5
 UNHIDE_PIN = os.environ.get("ROLEPLAY_UNHIDE_PIN", "1234")
 
 SAMPLING_PRESETS = {
-    "calm": {"temperature": 0.6, "top_p": 0.9, "top_k": 40, "min_p": 0.05},
-    "balanced": {"temperature": 0.8, "top_p": 0.95, "top_k": 60, "min_p": 0.05},
-    "chaotic": {"temperature": 1.05, "top_p": 0.98, "top_k": 100, "min_p": 0.02},
+    "calm": {"temperature": 0.6, "top_p": 0.75, "top_k": 40, "min_p": 0.05},
+    "balanced": {"temperature": 0.8, "top_p": 0.85, "top_k": 60, "min_p": 0.05},
+    "chaotic": {"temperature": 1.05, "top_p": 0.95, "top_k": 100, "min_p": 0.02},
 }

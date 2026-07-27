@@ -10,26 +10,49 @@ class ImageGenerationUnavailable(Exception):
     """Raised when no provider is configured/available, or the API is unreachable/errors."""
 
 
-def is_configured() -> bool:
-    """Whether the currently-selected provider (config.IMAGE_PROVIDER) has what it needs to run."""
-    if config.IMAGE_PROVIDER == "xai":
+def _format_api_error(provider: str, response: httpx.Response) -> str:
+    """Pulls the actual provider-reported error message out of an error response, so callers
+    see e.g. a real rate-limit/content-policy/auth reason instead of a generic failure string."""
+    detail = response.text[:500]
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        err = body.get("error", body)
+        if isinstance(err, dict):
+            detail = err.get("message") or detail
+        elif isinstance(err, str):
+            detail = err
+    return f"{provider} API error ({response.status_code}): {detail}"
+
+
+def is_configured(provider: str | None = None) -> bool:
+    """Whether the given provider (default: config.IMAGE_PROVIDER) has what it needs to run."""
+    provider = provider or config.IMAGE_PROVIDER
+    if provider == "xai":
         return bool(config.XAI_API_KEY)
-    if config.IMAGE_PROVIDER == "gemini":
+    if provider == "gemini":
         return bool(config.GEMINI_API_KEY)
     return False
 
 
-async def generate_image(prompt: str, reference_image_path: Path | None = None, aspect_ratio: str = "16:9") -> bytes:
+async def generate_image(
+    prompt: str,
+    reference_image_path: Path | None = None,
+    aspect_ratio: str = "16:9",
+    provider: str | None = None,
+) -> bytes:
     """Public entrypoint - stable regardless of which provider is configured. Adding a new
     provider means adding a `_generate_<name>()` function and one branch here, not touching
-    any caller."""
-    if config.IMAGE_PROVIDER == "xai":
+    any caller. `provider` overrides config.IMAGE_PROVIDER for this call only (used for the
+    cross-provider fallback in routers/images.py)."""
+    provider = provider or config.IMAGE_PROVIDER
+    if provider == "xai":
         return await _generate_xai(prompt, reference_image_path, aspect_ratio)
-    if config.IMAGE_PROVIDER == "gemini":
+    if provider == "gemini":
         return await _generate_gemini(prompt, reference_image_path, aspect_ratio)
-    raise ImageGenerationUnavailable(
-        f"unknown image provider '{config.IMAGE_PROVIDER}' (set ROLEPLAY_IMAGE_PROVIDER)"
-    )
+    raise ImageGenerationUnavailable(f"unknown image provider '{provider}' (set ROLEPLAY_IMAGE_PROVIDER)")
 
 
 # Appended to the prompt whenever a reference image is used, for both providers - without this,
@@ -53,8 +76,10 @@ def _to_data_uri(path: Path) -> str:
 async def _extract_xai_image_bytes(client: httpx.AsyncClient, entry: dict) -> bytes:
     if "b64_json" in entry:
         return base64.b64decode(entry["b64_json"])
-    # /v1/images/edits isn't confirmed to support response_format=b64_json like /generations
-    # does, so fall back to downloading the (documented-temporary) URL immediately.
+    # Fallback only - both request payloads now explicitly ask for response_format=b64_json, so
+    # this only fires if a future response ever omits it. Zero Data Retention xAI accounts can't
+    # use the URL format at all (the account can't retain a hosted copy to serve it from), so
+    # b64_json isn't just an optimization here, it's required for those accounts to work.
     img_resp = await client.get(entry["url"])
     img_resp.raise_for_status()
     return img_resp.content
@@ -73,6 +98,7 @@ async def _generate_xai(prompt: str, reference_image_path: Path | None, aspect_r
                     "model": config.XAI_IMAGE_MODEL,
                     "prompt": prompt + _REFERENCE_IMAGE_INSTRUCTION,
                     "image": {"type": "image_url", "url": _to_data_uri(reference_image_path)},
+                    "response_format": "b64_json",
                 }
                 r = await client.post(config.XAI_IMAGE_EDIT_URL, json=payload, headers=headers)
             else:
@@ -86,8 +112,10 @@ async def _generate_xai(prompt: str, reference_image_path: Path | None, aspect_r
                 r = await client.post(config.XAI_IMAGE_URL, json=payload, headers=headers)
             r.raise_for_status()
             return await _extract_xai_image_bytes(client, r.json()["data"][0])
+    except httpx.HTTPStatusError as e:
+        raise ImageGenerationUnavailable(_format_api_error("xAI", e.response)) from e
     except httpx.HTTPError as e:
-        raise ImageGenerationUnavailable("image generation API unreachable or failed") from e
+        raise ImageGenerationUnavailable(f"xAI image API unreachable: {e}") from e
 
 
 def _extract_gemini_image_bytes(response_json: dict) -> bytes:
@@ -95,13 +123,20 @@ def _extract_gemini_image_bytes(response_json: dict) -> bytes:
     # a list of steps; the model's output step contains content blocks, one of which is the
     # generated image (type "image", base64 in "data"). Walked manually rather than via a
     # convenience accessor since this is a raw REST call, not the SDK.
+    text_fallback = None
     for step in response_json.get("steps", []):
         if step.get("type") != "model_output":
             continue
         for block in step.get("content", []):
             if block.get("type") == "image" and block.get("data"):
                 return base64.b64decode(block["data"])
-    raise ImageGenerationUnavailable("Gemini response contained no image data")
+            if block.get("type") == "text" and block.get("text") and text_fallback is None:
+                text_fallback = block["text"].strip()
+    # No image block usually means the model refused (safety filter) and replied with text
+    # instead - surface that text since it's the actual reason, not a generic failure.
+    if text_fallback:
+        raise ImageGenerationUnavailable(f"Gemini did not return an image: {text_fallback}")
+    raise ImageGenerationUnavailable(f"Gemini response contained no image data: {response_json}")
 
 
 async def _generate_gemini(prompt: str, reference_image_path: Path | None, aspect_ratio: str) -> bytes:
@@ -140,5 +175,7 @@ async def _generate_gemini(prompt: str, reference_image_path: Path | None, aspec
             r = await client.post(config.GEMINI_IMAGE_URL, json=payload, headers=headers)
             r.raise_for_status()
             return _extract_gemini_image_bytes(r.json())
+    except httpx.HTTPStatusError as e:
+        raise ImageGenerationUnavailable(_format_api_error("Gemini", e.response)) from e
     except httpx.HTTPError as e:
-        raise ImageGenerationUnavailable("image generation API unreachable or failed") from e
+        raise ImageGenerationUnavailable(f"Gemini image API unreachable: {e}") from e

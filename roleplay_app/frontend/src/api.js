@@ -9,8 +9,16 @@ async function json(method, path, body, timeoutMs = 15000) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail.detail || `${method} ${path} failed (${res.status})`);
+    const body = await res.json().catch(() => ({}));
+    const { detail } = body;
+    // Image-generation failures send detail as {error, prompt} instead of a plain string, so
+    // the caller can show the prompt that was attempted alongside the error message.
+    const isStructured = detail && typeof detail === "object";
+    const err = new Error(
+      (isStructured ? detail.error : detail) || `${method} ${path} failed (${res.status})`
+    );
+    if (isStructured && detail.prompt) err.prompt = detail.prompt;
+    throw err;
   }
   return res.json();
 }
@@ -31,6 +39,8 @@ export const listSessions = (characterId) => json("GET", `/api/characters/${char
 export const getMessages = (sessionId) => json("GET", `/api/sessions/${sessionId}/messages`);
 export const getSessionState = (sessionId) => json("GET", `/api/sessions/${sessionId}/state`);
 export const triggerSummarize = (sessionId) => json("POST", `/api/sessions/${sessionId}/summarize`);
+// Non-streaming llama_client call, same 120s default timeout as startCharacter's opening scene.
+export const suggestReply = (sessionId) => json("POST", `/api/sessions/${sessionId}/suggest-reply`, undefined, 125000);
 export const getSessionDebug = (sessionId) => json("GET", `/api/sessions/${sessionId}/debug`);
 
 export const hideCharacter = (id) => json("POST", `/api/characters/${id}/hide`);
@@ -52,10 +62,11 @@ export const reactToFeedPost = (postId, characterId) =>
   json("POST", `/api/feed/posts/${postId}/react`, { character_id: characterId }, FEED_GENERATION_TIMEOUT_MS);
 export const commentOnFeedPost = (postId, content) => json("POST", `/api/feed/posts/${postId}/comments`, { content });
 
-// Image generation is two sequential server-side calls when moderation is enabled (default):
-// the local-model prompt neutralization (llama_client's 120s default timeout) followed by the
-// actual image API call (image_client.py's 90s timeout) - this needs to cover both, not just one.
-const IMAGE_GENERATION_TIMEOUT_MS = 215000;
+// Image generation is the local-model prompt neutralization (llama_client's 120s default
+// timeout) followed by up to 4 sequential image API calls - 2 attempts on the primary provider
+// plus up to 2 xAI fallback attempts if those fail (image_client.py's 90s timeout each,
+// images.py's PRIMARY_PROVIDER_ATTEMPTS/FALLBACK_PROVIDER_ATTEMPTS) - covers the worst case of all.
+const IMAGE_GENERATION_TIMEOUT_MS = 500000;
 
 export const generateMessageImage = (messageId) =>
   json("POST", `/api/messages/${messageId}/image`, undefined, IMAGE_GENERATION_TIMEOUT_MS);
@@ -94,7 +105,7 @@ async function* consumeSSEStream(res) {
       const dataStr = chunk.slice(5).trim();
       if (dataStr === "[DONE]" || !dataStr) continue;
       const parsed = JSON.parse(dataStr);
-      if (parsed.delta) yield parsed;
+      if (parsed.delta || parsed.type === "message_id") yield parsed;
     }
   }
 }

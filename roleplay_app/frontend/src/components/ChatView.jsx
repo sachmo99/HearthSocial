@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getMessages, getSessionState, getHealth, streamChat, regenerateResponse, clearChat, listSessions, hideSession } from "../api";
+import { getMessages, getSessionState, getHealth, streamChat, regenerateResponse, clearChat, listSessions, hideSession, suggestReply } from "../api";
 import ChatBanner from "./ChatBanner";
 import PastSessionBanner from "./PastSessionBanner";
 import ChatStatsBar from "./ChatStatsBar";
@@ -82,14 +82,19 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
       stalledRef.current = true;
       controller.abort();
     };
-    let stallTimer = setTimeout(stall, 30000);
+    let stallTimer = setTimeout(stall, 60000);
     const resetStallTimer = () => {
       clearTimeout(stallTimer);
-      stallTimer = setTimeout(stall, 30000);
+      stallTimer = setTimeout(stall, 60000);
     };
+    let newMessageId = null;
     try {
       for await (const chunk of streamGenerator) {
         resetStallTimer();
+        if (chunk.type === "message_id") {
+          newMessageId = chunk.message_id;
+          continue;
+        }
         setMessages((prev) => {
           const next = [...prev];
           const last = next[next.length - 1];
@@ -103,6 +108,7 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     } finally {
       clearTimeout(stallTimer);
     }
+    return newMessageId;
   };
 
   const send = async () => {
@@ -121,7 +127,13 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
-      await consumeStream(streamChat(sessionId, messageToSend, note, overrides, controller.signal), controller);
+      const newMessageId = await consumeStream(
+        streamChat(sessionId, messageToSend, note, overrides, controller.signal),
+        controller
+      );
+      if (newMessageId) {
+        setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? { ...m, id: newMessageId } : m)));
+      }
     } catch (err) {
       if (err.name === "AbortError") {
         if (stalledRef.current) showError("Connection stalled - try again");
@@ -132,10 +144,6 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     } finally {
       setSending(false);
       refreshState();
-      // Placeholder messages added optimistically above have no real id yet (only known once
-      // the backend has actually inserted the row) - refetch so the image-generation button has
-      // a real message id to call once the turn is done.
-      getMessages(sessionId).then(setMessages);
     }
   };
 
@@ -151,7 +159,10 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
-      await consumeStream(regenerateResponse(sessionId, overrides, controller.signal), controller);
+      const newMessageId = await consumeStream(regenerateResponse(sessionId, overrides, controller.signal), controller);
+      if (newMessageId) {
+        setMessages((prev) => prev.map((m, i) => (i === prev.length - 1 ? { ...m, id: newMessageId } : m)));
+      }
     } catch (err) {
       if (err.name === "AbortError") {
         if (stalledRef.current) showError("Connection stalled - try again");
@@ -162,10 +173,6 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
     } finally {
       setSending(false);
       refreshState();
-      // Placeholder messages added optimistically above have no real id yet (only known once
-      // the backend has actually inserted the row) - refetch so the image-generation button has
-      // a real message id to call once the turn is done.
-      getMessages(sessionId).then(setMessages);
     }
   };
 
@@ -226,9 +233,11 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
       )}
 
       {viewing ? (
-        <ChatStatsBar state={viewing.state} />
+        <ChatStatsBar state={viewing.state} characterName={character.name} />
       ) : (
-        sessionState && <ChatStatsBar state={sessionState} sessionId={sessionId} onRefresh={refreshState} />
+        sessionState && (
+          <ChatStatsBar state={sessionState} sessionId={sessionId} onRefresh={refreshState} characterName={character.name} />
+        )
       )}
 
       <MessageList
@@ -250,6 +259,7 @@ export default function ChatView({ character, sessionId, onSessionReset }) {
           disabled={sending}
           directorNote={directorNote}
           onDirectorNoteChange={setDirectorNote}
+          onSuggestReply={() => suggestReply(sessionId)}
         />
       )}
       {!viewing && <DebugPanel sessionId={sessionId} />}

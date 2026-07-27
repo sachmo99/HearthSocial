@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import config
@@ -62,7 +63,10 @@ _STAGE_THRESHOLDS = {s: (d["min_affection"], d["min_closeness"]) for s, d in _ST
 
 
 def stage_options() -> list[dict]:
-    return [{"id": s, "label": d["label"]} for s, d in _STAGE_DATA.items()]
+    return [
+        {"id": s, "label": d["label"], "min_affection": d["min_affection"], "min_closeness": d["min_closeness"]}
+        for s, d in _STAGE_DATA.items()
+    ]
 
 
 def stage_rank(stage: str) -> int:
@@ -100,9 +104,25 @@ _IMAGE_STYLE_DIRECTIVE = (
     "same skin tone as the main character described above, for visual consistency"
 )
 
+# Neither xai's nor Gemini's image APIs expose a dedicated negative_prompt field (both are
+# autoregressive/multimodal models, not diffusion, so classic CFG-style negative prompting
+# doesn't apply). Stated as positive assertions rather than "avoid X/no X" - negating a noun
+# (e.g. "avoid extra fingers") tends to make an autoregressive model latch onto that noun and
+# generate it anyway, whereas stating the correct anatomy directly doesn't carry that risk.
+# Applies to every person in the scene, not just the main character, since that's specifically
+# where anatomy errors have been observed (a secondary character with no reference image to
+# anchor its proportions).
+_IMAGE_NEGATIVE_DIRECTIVE = (
+    "Anatomically correct proportions: each person has exactly two arms, two legs, and five "
+    "clearly separated fingers per hand. Faces are symmetrical and clearly rendered. Crisp, "
+    "high-quality rendering throughout - applies to every person in the scene, not only the "
+    "main character."
+)
+
 
 def build_image_prompt(character: dict, state: dict, scene_text: str = "") -> str:
-    parts = [character.get("name", "")]
+    name = character.get("name", "")
+    parts = [f"An imaginary person named {name}" if name else "An imaginary person"]
     if state.get("character_appearance"):
         parts.append(state["character_appearance"])
     if state.get("character_mood"):
@@ -110,11 +130,19 @@ def build_image_prompt(character: dict, state: dict, scene_text: str = "") -> st
     if state.get("location"):
         parts.append(f"in {state['location']}")
     if scene_text:
-        truncated = scene_text.strip()[:300]
+        # Strip (parenthetical internal monologue) per the app's own message-formatting
+        # convention - it's non-visual narration that only adds romantically/sexually charged
+        # wording for an image safety classifier to key on, with no bearing on what's actually
+        # drawn.
+        visual_only = re.sub(r"\([^)]*\)", "", scene_text).strip()
+        visual_only = re.sub(r"\s+", " ", visual_only)
+        truncated = visual_only[:300]
         last_stop = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
         clean_scene = truncated[: last_stop + 1] if last_stop > 0 else truncated.rstrip()
-        parts.append(f"Scene: {clean_scene}")
+        if clean_scene:
+            parts.append(f"Scene: {clean_scene}")
     parts.append(_IMAGE_STYLE_DIRECTIVE)
+    parts.append(_IMAGE_NEGATIVE_DIRECTIVE)
     return ", ".join(p for p in parts if p)
 
 

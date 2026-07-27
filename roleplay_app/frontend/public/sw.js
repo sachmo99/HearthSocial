@@ -1,4 +1,4 @@
-const CACHE = "hearthsocial-shell-v10";
+const CACHE = "hearthsocial-shell-v22";
 const SHELL = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {
@@ -15,15 +15,17 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Never touch API or portrait traffic - this app needs live data from the backend for
-// everything (chat, feed, characters, avatars), and any cache involvement here risks
-// silently serving stale state. Only the static app shell goes through this cache.
+// Never touch API, portrait, or generated-image traffic - this app needs live data from the
+// backend for everything (chat, feed, characters, avatars, generated scene images), and any
+// cache involvement here risks silently serving stale state. Only the static app shell goes
+// through this cache.
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (
     event.request.method !== "GET" ||
     url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/portraits/")
+    url.pathname.startsWith("/portraits/") ||
+    url.pathname.startsWith("/generated/")
   ) {
     return;
   }

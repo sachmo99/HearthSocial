@@ -39,7 +39,7 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 ## Features
 
 **Character & memory**
-- Character cards with persona, opening scene, sampling personality, and starting relationship stats — create/edit them directly in the UI, including an optional avatar image (1:1 crop matching the thumbnail display, PNG/JPEG only, compressed client-side before upload).
+- Character cards with persona, opening scene, sampling personality, and a starting relationship stage (any stage, from stranger to spouse/family/taboo — affection/closeness are derived from the chosen stage automatically, not entered separately) — create/edit them directly in the UI, including an optional avatar image (1:1 crop matching the thumbnail display, PNG/JPEG only, compressed client-side before upload).
 - Portraits are resolved dynamically by character name (both PNG and JPEG supported, never silently converted) — drop a file into `frontend/public/portraits/` or upload through the UI and it shows up immediately, no rebuild needed.
 - Click a character to auto-generate an opening scene in character (via a hidden system trigger you never see).
 - Structured memory: affection, closeness, relationship stage, mood, location, durable facts, and a relationship-history log (why the stage changed, and when), updated by the model every 10 messages (configurable), merged rather than overwritten.
@@ -64,9 +64,11 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 
 **Interface & controls**
 - A manual "director's note" (🎬 in the chat input) — a one-turn out-of-character nudge to steer the scene (e.g. "someone knocks on the door") without your character saying it; shows up as a distinct divider in the chat log.
+- "💡 Suggest" reply button — appears in place of Send when the input box is empty; reads the last 5 messages and suggests a plausible next line for *you* to say, filling the input box for you to review/edit rather than sending it automatically.
 - Hide/unhide for both characters and individual sessions, protected by a PIN.
 - Per-message sampling override popup (temperature/top_p/top_k/min_p) — no server restart needed.
 - Live stats bar (❤️ affection, 🤝 closeness, 🎭 mood, relationship-stage badge) plus a "messages until next summary" counter and a summarizing-in-progress indicator, and an "🔄 Update memory" button to trigger a summarization pass on demand rather than waiting for the automatic every-N-message one — useful right before generating a scene image, since the image prompt is built from this same summarized state.
+- Click the relationship-stage badge to see a branch map of the full relationship path (stranger → acquaintance → friend → confidant, then partner → spouse / family / taboo) with the character's current stage and everything already passed highlighted, so you can see what other paths were possible.
 - Session history: browse and view past (cleared) conversations read-only.
 - Regenerate button to redo the last reply; in-flight generation is properly aborted when you switch characters or clear the chat, so it doesn't keep the single inference slot tied up.
 - Dialogue/action/internal-monologue visually distinguished in the chat, including recovery for models that don't perfectly follow the formatting convention.
@@ -196,7 +198,6 @@ Key knobs live in `roleplay_app/backend/config.py`:
 - Single llama-server slot: switching characters, background summarization, and feed post/reaction generation all compete for the same inference slot, so there's a real (not corruption, just latency) cost to interleaving them — see the KV-cache discussion in [`PROGRESS.md`](roleplay_app/PROGRESS.md).
 - Local/quantized models won't always perfectly honor formatting or grounding instructions (e.g. occasionally contradicting a recalled fact) — prompting reduces this but doesn't eliminate it.
 - At high affection/deep-intimacy stages, replies can drift into melodramatic/purple prose; a couple of prompt-level fixes were tried and empirically failed to help (see [`PROGRESS.md`](roleplay_app/PROGRESS.md) — Known gaps). The manual director's note is currently the one reliable way to redirect tone in the moment.
-- Creating a *new* character through the UI only offers `stranger` through `partner` as a starting relationship stage — `spouse`/`family`/`taboo` are reachable through play but not selectable as a starting point yet.
 - Mobile layout has one real breakpoint (chat banner + hero) verified on an actual phone; other screens/modals rely on the pre-existing fluid layout and haven't been specifically tuned.
 - PWA install requires a secure context (HTTPS or `localhost`) for the service worker to register in Chrome — a plain-HTTP LAN address won't get the service worker/update-banner/offline-shell features there without extra setup (a Chrome flag, or fronting the app with HTTPS). iOS Safari's "Add to Home Screen" doesn't have this restriction and is the practical path today.
 - The installed PWA has occasionally been reported to freeze or drop its connection; mitigated with request timeouts, stream-stall recovery, and foreground re-sync, but the exact trigger was never conclusively identified — see [`PROGRESS.md`](roleplay_app/PROGRESS.md).

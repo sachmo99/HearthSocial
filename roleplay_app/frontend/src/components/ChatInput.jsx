@@ -1,7 +1,32 @@
 import { useState } from "react";
 
-export default function ChatInput({ value, onChange, onSubmit, disabled, directorNote, onDirectorNoteChange }) {
+export default function ChatInput({
+  value,
+  onChange,
+  onSubmit,
+  disabled,
+  directorNote,
+  onDirectorNoteChange,
+  onSuggestReply,
+}) {
   const [showNudge, setShowNudge] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState(null);
+
+  const handleSuggest = async () => {
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const { suggestion } = await onSuggestReply();
+      onChange(suggestion);
+    } catch (err) {
+      setSuggestError(err.message || "Could not suggest a reply.");
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const isEmpty = !value.trim() && !directorNote.trim();
 
   return (
     <form
@@ -20,6 +45,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, directo
           disabled={disabled}
         />
       )}
+      {suggestError && <div className="suggest-reply-error">{suggestError}</div>}
       <div className="chat-input-row">
         <button
           type="button"
@@ -35,6 +61,17 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, directo
           placeholder="Say something..."
           disabled={disabled}
         />
+        {isEmpty && (
+          <button
+            type="button"
+            className="suggest-reply-button"
+            onClick={handleSuggest}
+            disabled={disabled || suggesting}
+            title="Suggest how you might reply, based on the last few messages"
+          >
+            {suggesting ? "…" : "💡 Suggest"}
+          </button>
+        )}
         <button type="submit" disabled={disabled}>
           Send
         </button>

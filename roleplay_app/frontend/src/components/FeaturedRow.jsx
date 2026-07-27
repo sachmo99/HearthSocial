@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { portraitStyle, portraitImageSrc, blurbFromPersona, initial } from "../theme";
+import { portraitStyle, portraitImageSrc, portraitImageSrcSet, blurbFromPersona, initial } from "../theme";
 import { useStages, stageLabel } from "../useStages";
 
 function FeaturedPortrait({ name }) {
@@ -15,6 +15,7 @@ function FeaturedPortrait({ name }) {
     <img
       className="featured-portrait"
       src={portraitImageSrc(name)}
+      srcSet={portraitImageSrcSet(name)}
       alt={name}
       onError={() => setFailed(true)}
     />

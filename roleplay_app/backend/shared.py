@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 from fastapi import HTTPException
+from PIL import Image
 from pydantic import BaseModel
 
 import config
@@ -18,6 +19,8 @@ def avatar_slug(name: str) -> str:
 
 
 PORTRAIT_EXTENSIONS = ("jpg", "jpeg", "png", "webp")
+SMALL_PORTRAIT_SUFFIX = "-sm"
+SMALL_PORTRAIT_WIDTH = 500
 
 
 def resolve_portrait_path(slug: str) -> Path | None:
@@ -25,7 +28,24 @@ def resolve_portrait_path(slug: str) -> Path | None:
         path = config.PORTRAITS_DIR / f"{slug}.{ext}"
         if path.is_file():
             return path
+    # No dedicated small variant (e.g. an older upload, or a character whose source
+    # image was never larger than the small size to begin with) - the base image
+    # doubles as its own 1x version.
+    if slug.endswith(SMALL_PORTRAIT_SUFFIX):
+        return resolve_portrait_path(slug[: -len(SMALL_PORTRAIT_SUFFIX)])
     return None
+
+
+def write_small_portrait(slug: str, ext: str) -> None:
+    base_path = config.PORTRAITS_DIR / f"{slug}.{ext}"
+    with Image.open(base_path) as im:
+        if im.width <= SMALL_PORTRAIT_WIDTH:
+            # Base image is already small enough - the resolve_portrait_path fallback
+            # will serve it for the 1x request too, no separate file needed.
+            return
+        new_height = round(im.height * SMALL_PORTRAIT_WIDTH / im.width)
+        im = im.convert("RGB").resize((SMALL_PORTRAIT_WIDTH, new_height), Image.LANCZOS)
+        im.save(config.PORTRAITS_DIR / f"{slug}{SMALL_PORTRAIT_SUFFIX}.jpg", "JPEG", quality=88)
 
 
 def load_character(character_id: str) -> dict:

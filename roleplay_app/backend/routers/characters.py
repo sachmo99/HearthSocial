@@ -28,20 +28,22 @@ class CharacterIn(BaseModel):
     sampling_preset: str = "balanced"
     character_appearance: str = ""
     default_location: str = ""
-    character_affection: int = 20
-    character_closeness: int = 10
     relationship_stage: str = "stranger"
 
 
 def _card_to_initial_state(card: CharacterIn) -> dict:
+    # Affection/closeness aren't taken as separate input - derived from the chosen starting
+    # stage's own thresholds so a character can never start inconsistent (e.g. "confidant" with
+    # affection too low to have actually reached confidant).
+    min_affection, min_closeness = character_state.stage_thresholds(card.relationship_stage)
     return {
         "location": card.default_location,
         "time_of_day": "",
         "character_mood": "neutral",
         "character_appearance": card.character_appearance,
         "character_memory": "",
-        "character_affection": card.character_affection,
-        "character_closeness": card.character_closeness,
+        "character_affection": min_affection,
+        "character_closeness": min_closeness,
         "relationship_stage": card.relationship_stage,
         "notable_facts": [],
         "relationship_history": [],
@@ -72,8 +74,6 @@ def _character_to_form_shape(character: dict) -> dict:
         "sampling_preset": character.get("sampling_preset", "balanced"),
         "character_appearance": state.get("character_appearance", ""),
         "default_location": state.get("location", ""),
-        "character_affection": state.get("character_affection", 20),
-        "character_closeness": state.get("character_closeness", 10),
         "relationship_stage": state.get("relationship_stage", "stranger"),
     }
 
@@ -213,4 +213,5 @@ async def upload_avatar(name: str = Form(...), file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="invalid character name")
     config.PORTRAITS_DIR.mkdir(parents=True, exist_ok=True)
     (config.PORTRAITS_DIR / f"{slug}.{ext}").write_bytes(data)
+    shared.write_small_portrait(slug, ext)
     return {"ok": True}

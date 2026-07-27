@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { portraitStyle, portraitImageSrc, initial } from "../theme";
+import { portraitStyle, portraitImageSrc, portraitImageSrcSet, initial } from "../theme";
 
 export default function FeedAvatar({ name }) {
   const [failed, setFailed] = useState(false);
@@ -14,6 +14,12 @@ export default function FeedAvatar({ name }) {
     );
   }
   return (
-    <img className="feed-avatar" src={portraitImageSrc(name)} alt={name} onError={() => setFailed(true)} />
+    <img
+      className="feed-avatar"
+      src={portraitImageSrc(name)}
+      srcSet={portraitImageSrcSet(name)}
+      alt={name}
+      onError={() => setFailed(true)}
+    />
   );
 }

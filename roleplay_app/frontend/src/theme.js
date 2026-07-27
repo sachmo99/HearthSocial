@@ -23,9 +23,20 @@ export function initial(name) {
   return name.trim().charAt(0).toUpperCase() || "?";
 }
 
+function portraitSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export function portraitImageSrc(name) {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  return `/portraits/${slug}`;
+  return `/portraits/${portraitSlug(name)}`;
+}
+
+// Lets the browser pick the right file for its own pixel density instead of
+// always loading the large version - falls back to the base image for 1x if
+// no dedicated small variant exists (see backend resolve_portrait_path).
+export function portraitImageSrcSet(name) {
+  const slug = portraitSlug(name);
+  return `/portraits/${slug}-sm 1x, /portraits/${slug} 2x`;
 }
 
 export function blurbFromPersona(name, persona) {

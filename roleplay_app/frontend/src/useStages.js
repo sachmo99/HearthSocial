@@ -31,3 +31,8 @@ export function useStages() {
 export function stageLabel(stages, id) {
   return stages.find((s) => s.id === id)?.label || id;
 }
+
+export function stageThresholds(stages, id) {
+  const s = stages.find((s) => s.id === id);
+  return { affection: s?.min_affection ?? 0, closeness: s?.min_closeness ?? 0 };
+}

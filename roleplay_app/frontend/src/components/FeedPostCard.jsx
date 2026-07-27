@@ -24,6 +24,7 @@ export default function FeedPostCard({ post, comments, characters, onChanged, im
   const [error, setError] = useState("");
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [imageFailedPrompt, setImageFailedPrompt] = useState("");
   const [imageExpanded, setImageExpanded] = useState(false);
 
   const author = characters.find((c) => c.id === post.character_id);
@@ -47,11 +48,13 @@ export default function FeedPostCard({ post, comments, characters, onChanged, im
   const handleGenerateImage = async () => {
     setGeneratingImage(true);
     setImageError("");
+    setImageFailedPrompt("");
     try {
       await generateFeedPostImage(post.id);
       await onChanged();
     } catch (e) {
       setImageError(e.message);
+      setImageFailedPrompt(e.prompt || "");
     } finally {
       setGeneratingImage(false);
     }
@@ -107,6 +110,14 @@ export default function FeedPostCard({ post, comments, characters, onChanged, im
             {generatingImage ? "Generating…" : post.image_path ? "🔄 Regenerate image" : "🖼️ Generate image"}
           </button>
           {imageError && <span className="message-image-error">{imageError}</span>}
+          {imageFailedPrompt && (
+            <textarea
+              className="message-image-failed-prompt"
+              readOnly
+              value={imageFailedPrompt}
+              onClick={(e) => e.target.select()}
+            />
+          )}
         </div>
       )}
 

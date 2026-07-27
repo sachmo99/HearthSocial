@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { portraitStyle, portraitImageSrc, initial } from "../theme";
+import { portraitStyle, portraitImageSrc, portraitImageSrcSet, initial } from "../theme";
 import ImageLightbox from "./ImageLightbox";
 
 export default function ChatBannerAvatar({ name }) {
@@ -21,6 +21,7 @@ export default function ChatBannerAvatar({ name }) {
       <img
         className="chat-banner-avatar chat-banner-avatar-clickable"
         src={src}
+        srcSet={portraitImageSrcSet(name)}
         alt={name}
         onError={() => setFailed(true)}
         onClick={() => setExpanded(true)}

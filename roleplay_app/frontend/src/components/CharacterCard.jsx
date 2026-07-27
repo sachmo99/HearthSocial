@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { portraitStyle, initial, portraitImageSrc } from "../theme";
+import { portraitStyle, initial, portraitImageSrc, portraitImageSrcSet } from "../theme";
 import EyeOffIcon from "./EyeOffIcon";
 
 export default function CharacterCard({ character, onSelect, onEdit, onHide }) {
@@ -15,6 +15,7 @@ export default function CharacterCard({ character, onSelect, onEdit, onHide }) {
           <img
             className="character-portrait character-portrait-image"
             src={portraitImageSrc(character.name)}
+            srcSet={portraitImageSrcSet(character.name)}
             alt={character.name}
             onError={() => setImageFailed(true)}
           />

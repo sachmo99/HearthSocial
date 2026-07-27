@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useStages, stageLabel } from "../useStages";
 import { triggerSummarize } from "../api";
+import RelationshipStageMap from "./RelationshipStageMap";
 
 function MoodStat({ mood }) {
   const windowRef = useRef(null);
@@ -60,8 +61,9 @@ function SummarizeButton({ sessionId, summarizing, onRefresh }) {
   );
 }
 
-export default function ChatStatsBar({ state, sessionId, onRefresh }) {
+export default function ChatStatsBar({ state, sessionId, onRefresh, characterName }) {
   const stages = useStages();
+  const [showStageMap, setShowStageMap] = useState(false);
   return (
     <div className="chat-stats-bar">
       <span className="stat" title="Affection">
@@ -84,9 +86,12 @@ export default function ChatStatsBar({ state, sessionId, onRefresh }) {
       {sessionId && onRefresh && (
         <SummarizeButton sessionId={sessionId} summarizing={state.summarizing} onRefresh={onRefresh} />
       )}
-      <span className="stat stage-badge" title="Relationship stage">
+      <button className="stat stage-badge" title="Relationship stage - click to see the possible paths" onClick={() => setShowStageMap(true)}>
         {stageLabel(stages, state.relationship_stage)}
-      </span>
+      </button>
+      {showStageMap && (
+        <RelationshipStageMap characterName={characterName} state={state} stages={stages} onClose={() => setShowStageMap(false)} />
+      )}
     </div>
   );
 }

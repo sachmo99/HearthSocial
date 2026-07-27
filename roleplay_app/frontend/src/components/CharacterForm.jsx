@@ -1,6 +1,6 @@
 import { useState } from "react";
 import AvatarCropModal from "./AvatarCropModal";
-import { portraitImageSrc } from "../theme";
+import { portraitImageSrc, portraitImageSrcSet } from "../theme";
 import { useStages } from "../useStages";
 
 const DEFAULT_FORM = {
@@ -10,8 +10,6 @@ const DEFAULT_FORM = {
   sampling_preset: "balanced",
   character_appearance: "",
   default_location: "",
-  character_affection: 20,
-  character_closeness: 10,
   relationship_stage: "stranger",
 };
 
@@ -67,6 +65,7 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
             <img
               className="avatar-picker-preview"
               src={portraitImageSrc(form.name)}
+              srcSet={portraitImageSrcSet(form.name)}
               alt="Current avatar"
               onError={() => setExistingAvatarFailed(true)}
             />
@@ -104,28 +103,6 @@ export default function CharacterForm({ initial, onSubmit, onCancel }) {
           <option value="balanced">Balanced</option>
           <option value="chaotic">Chaotic</option>
         </select>
-      </label>
-      <label>
-        Starting affection ({form.character_affection})
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={form.character_affection}
-          onChange={update("character_affection")}
-          style={{ background: `linear-gradient(to right, var(--accent) ${form.character_affection}%, oklch(0.32 0.04 255) ${form.character_affection}%)` }}
-        />
-      </label>
-      <label>
-        Starting closeness ({form.character_closeness})
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={form.character_closeness}
-          onChange={update("character_closeness")}
-          style={{ background: `linear-gradient(to right, var(--accent) ${form.character_closeness}%, oklch(0.32 0.04 255) ${form.character_closeness}%)` }}
-        />
       </label>
       <label>
         Starting relationship stage

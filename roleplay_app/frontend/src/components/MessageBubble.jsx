@@ -4,7 +4,7 @@ import TypingIndicator from "./TypingIndicator";
 import FormattedMessage from "./FormattedMessage";
 import ImageLightbox from "./ImageLightbox";
 import { generateMessageImage } from "../api";
-import { portraitImageSrc, portraitStyle, initial } from "../theme";
+import { portraitImageSrc, portraitImageSrcSet, portraitStyle, initial } from "../theme";
 
 function CharacterAvatar({ name }) {
   const [failed, setFailed] = useState(false);
@@ -19,6 +19,7 @@ function CharacterAvatar({ name }) {
     <img
       className="message-avatar"
       src={portraitImageSrc(name)}
+      srcSet={portraitImageSrcSet(name)}
       alt={name}
       onError={() => setFailed(true)}
     />
@@ -32,6 +33,7 @@ function UserAvatar() {
 function MessageImage({ message, imageGenEnabled, onImageGenerated }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [failedPrompt, setFailedPrompt] = useState(null);
   const [expanded, setExpanded] = useState(false);
 
   const canGenerate = imageGenEnabled && message.id;
@@ -40,11 +42,13 @@ function MessageImage({ message, imageGenEnabled, onImageGenerated }) {
   const handleClick = async () => {
     setGenerating(true);
     setError(null);
+    setFailedPrompt(null);
     try {
       const { image_path } = await generateMessageImage(message.id);
       onImageGenerated(message.id, image_path);
     } catch (err) {
       setError(err.message || "Image generation failed.");
+      setFailedPrompt(err.prompt || null);
     } finally {
       setGenerating(false);
     }
@@ -70,6 +74,14 @@ function MessageImage({ message, imageGenEnabled, onImageGenerated }) {
             {generating ? "Generating…" : message.image_path ? "🔄 Regenerate image" : "🖼️ Generate image"}
           </button>
           {error && <span className="message-image-error">{error}</span>}
+          {failedPrompt && (
+            <textarea
+              className="message-image-failed-prompt"
+              readOnly
+              value={failedPrompt}
+              onClick={(e) => e.target.select()}
+            />
+          )}
         </div>
       )}
     </>

@@ -4,6 +4,7 @@ import character_state
 import config
 import db
 import llama_client
+import shared
 
 RUNNING: set[str] = set()
 
@@ -39,6 +40,11 @@ async def run(session_id: str) -> None:
         last_summarized_seq = row["last_summarized_seq"]
         previous_state = json.loads(previous_summary)
 
+        character_id = conn.execute(
+            "SELECT character_id FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()["character_id"]
+        character = shared.load_character(character_id)
+
         transcript_rows = conn.execute(
             "SELECT role, content FROM messages WHERE session_id = ? AND seq > ? ORDER BY seq",
             (session_id, last_summarized_seq),
@@ -62,6 +68,7 @@ async def run(session_id: str) -> None:
 
         prompt = (
             "You maintain a running structured JSON state for a role-play character. "
+            f"Character background: {character['persona']}\n\n"
             "Merge/update the JSON state below using the new transcript. "
             "Preserve every existing field unless the transcript explicitly changes it - never null out or omit prior memory. "
             f"Adjust character_affection and character_closeness incrementally based on how the user treated the "
@@ -72,12 +79,27 @@ async def run(session_id: str) -> None:
             "Only advance it if the transcript clearly earns it AND affection/closeness are already high enough to "
             "support that stage - a numeric gate will reject an unsupported jump and revert it, so do not advance "
             "preemptively expecting affection to catch up later. "
+            "Choosing between the high-intimacy stages requires reading the character background above, not just "
+            "the transcript: use 'partner' or 'spouse' only when nothing about the character's established "
+            "relationship to the user (per the background) makes a romantic bond forbidden - e.g. two unrelated, "
+            "unattached adults growing closer, then marrying. If the background establishes a relationship to the "
+            "user that would normally be forbidden - a blood/family relation, a stark power-imbalance role, OR "
+            "the character already being married/committed to someone else (an affair) - and things have turned "
+            "romantic or intimate, use 'taboo' instead of 'partner'/'spouse'. This applies even if the two are not "
+            "married to each other, since 'unmarried' does not make a forbidden relationship a normal one - and it "
+            "applies even if the character's stray spouse/partner never appears in the transcript directly, as "
+            "long as the background establishes they exist. Use 'family' only for a close familial bond that has "
+            "stayed non-romantic/non-sexual. "
             "If relationship_stage changes from its previous value, append exactly one short entry to "
             "relationship_history describing what happened and why the relationship advanced (e.g. 'Became "
             "friends after helping fix the bookshelf.'). If relationship_stage does not change, leave "
             "relationship_history exactly as it was - never rewrite or remove past entries. "
             "character_mood must be a short phrase or clause (a few words, never a full sentence) describing the "
             "character's current emotional state, e.g. 'quietly pleased' or 'a little on edge'. "
+            "character_appearance must be actively re-checked against the transcript every cycle, not left untouched "
+            "by default - update it if the transcript describes a change in clothing, physical state, setting-driven "
+            "appearance detail, or a prop/object associated with the character (e.g. an animal leaving, an item picked "
+            "up or set down). Keep it a concise phrase or two, not a paragraph. "
             "character_memory must stay concise (2-3 sentences) and describe the relationship dynamic plainly and "
             "factually - avoid superlative or escalating language (e.g. 'sacred', 'destiny', 'profound', "
             "'transcendent'); state what is actually happening, not how monumental it feels. "
