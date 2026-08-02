@@ -9,7 +9,11 @@ import rag
 async def build(conn, session: dict, character: dict, summary: dict) -> list[dict]:
     persona = character["persona"]
     directive = character_state.build_behavior_directive(summary)
-    summary_text = json.dumps(summary)
+    # character_memory_raw (summarizer.py's pre-rewrite text, kept only for debugging) must never
+    # reach the model - dumping it here would put the exact melodrama _plainify() removes right
+    # back into context for the model to imitate.
+    summary_for_prompt = {k: v for k, v in summary.items() if k != "character_memory_raw"}
+    summary_text = json.dumps(summary_for_prompt)
 
     all_rows = conn.execute(
         "SELECT seq, role, content, token_count, visible FROM messages WHERE session_id = ? ORDER BY seq DESC",
@@ -36,8 +40,8 @@ async def build(conn, session: dict, character: dict, summary: dict) -> list[dic
         )
 
     fixed_text = (
-        f"{persona}\n\n{character_state.RESPONSE_STYLE_DIRECTIVE}\n\n{directive}"
-        f"\n\nCurrent state: {summary_text}{rag_block}"
+        f"{persona}\n\n{character_state.RESPONSE_STYLE_DIRECTIVE}\n\n{character_state.SCENE_PROGRESSION_DIRECTIVE}"
+        f"\n\n{directive}\n\nCurrent state: {summary_text}{rag_block}"
     )
     fixed_tokens = await llama_client.tokenize(fixed_text)
     remaining_budget = config.CONTEXT_WINDOW_TOKENS - fixed_tokens - config.GENERATION_HEADROOM_TOKENS

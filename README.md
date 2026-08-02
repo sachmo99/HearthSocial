@@ -44,6 +44,7 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 - Click a character to auto-generate an opening scene in character (via a hidden system trigger you never see).
 - Structured memory: affection, closeness, relationship stage, mood, location, durable facts, and a relationship-history log (why the stage changed, and when), updated by the model every 10 messages (configurable), merged rather than overwritten.
 - RAG-backed recall of specific facts from anywhere earlier in the conversation, scoped per-session, with each recalled fact tagged by how long ago it was said so the model treats it as history rather than current state.
+- A scene-progression directive nudges every reply to keep the scene moving (a small action, an environment shift, an unprompted development) instead of only reacting to your last line and stopping.
 
 **Anti-drift safeguards**
 - A per-cycle cap on how far affection/closeness can move at once, a numeric gate that blocks the relationship stage from advancing faster than the stats actually support, and length/tone constraints on the running memory summary — layered on top of the model's own updates.
@@ -59,8 +60,10 @@ Beyond one-on-one chat, characters share a public **social feed**: they post in-
 - Generate a scene image for any assistant chat message or top-level feed post — built from the character's current appearance/location/mood/relationship-stage plus the actual scene content. Provider-swappable (`ROLEPLAY_IMAGE_PROVIDER`); Gemini 3.1 Flash Lite Image ("Nano Banana 2 Lite", default — the cheapest/fastest Gemini image tier, chosen for cost control) and xAI's Grok Imagine are both implemented.
 - Uses the character's existing portrait as a reference image (both providers' image-editing/multimodal path, not plain text-to-image), so the generated scene keeps a consistent face/likeness instead of a different-looking character each time — and is told to take only the face/likeness from it, ignoring the portrait's own background in favor of the scene's actual described location. Falls back to plain text-to-image if the character has no portrait uploaded yet.
 - The prompt is neutralized through the local model before it's sent to the cloud API by default (toggleable), since the roleplay scenes it's built from can be explicit and the cloud provider won't generate that.
-- Strictly user-triggered (a button per message/post, plus a regenerate option once one exists), same as feed generation — nothing generates automatically.
+- Strictly user-triggered (a "⚡ Quick generate/regenerate" button per message/post), same as feed generation — nothing generates automatically. Regenerating always shows the new image immediately — every generation gets its own file rather than overwriting the last one.
+- A "🎨 Custom generate..." dropdown next to the button lets you pick a specific provider+model for that one generation (Gemini's lite model, xAI standard, or xAI quality), since some scenes render better on one than another. Every generation is kept — the latest is always shown, and anything earlier is tucked into a collapsible "Other generations" toggle underneath, each labeled with the model that made it.
 - The one part of the app that isn't fully offline, and entirely optional: unset `ROLEPLAY_GEMINI_API_KEY` (or `ROLEPLAY_XAI_API_KEY` if using that provider) and the buttons simply don't appear, everything else works exactly as before.
+- The image prompt tells the model that the current scene's described attire/state overrides the character's general appearance baseline on conflict, and gives explicit composition rules for a secondary character in frame (kept smaller/further back than the main character unless the scene describes closer contact) — both added after real generations showed stale/contradictory outfits and poorly framed secondary characters.
 
 **Interface & controls**
 - A manual "director's note" (🎬 in the chat input) — a one-turn out-of-character nudge to steer the scene (e.g. "someone knocks on the door") without your character saying it; shows up as a distinct divider in the chat log.
@@ -126,7 +129,7 @@ cd roleplay_app
 .\run.ps1
 ```
 
-This activates the venv and starts uvicorn as a single worker (required — the background summarizer's concurrency guard is in-process memory, not shared across workers). Open `http://127.0.0.1:8000` (or `http://localhost:8000` — both work identically now that the frontend calls the API with relative paths).
+This activates the venv and starts uvicorn as a single worker (required — the background summarizer's concurrency guard is in-process memory, not shared across workers), with `--reload` watching both `.py` files and `.json` config (`relationship_stages.json`, character files, etc.) so edits to either pick up automatically without a manual restart. Open `http://127.0.0.1:8000` (or `http://localhost:8000` — both work identically now that the frontend calls the API with relative paths).
 
 ### Frontend development
 
